@@ -4,4 +4,9 @@
 .Ruserdata
 .DS_Store
 # The data is confidential upon publication release
-Data/ 
+Data/Medits_TableA.csv
+Data/Medits_TableB.csv
+Data/Medits_TableC.csv
+Data/MEDITS_spp.codes.csv
+Data/TATB_WMED_1999-2021_clean.csv
+Data/Catchs
