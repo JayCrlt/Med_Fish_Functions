@@ -160,3 +160,5 @@ P_diet <- ggplot(data_summary, aes(x = FoodTroph, y = p)) +
 
 Figure_S2 = C_diet + N_diet + P_diet + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"))
+
+#### 0. Export the data
