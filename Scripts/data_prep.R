@@ -161,6 +161,17 @@ P_diet <- ggplot(data_summary, aes(x = FoodTroph, y = p)) +
 Figure_S2 = C_diet + N_diet + P_diet + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
+# Add estimates
+nutrients_imputed = nutrients_imputed |>
+  mutate(Species = gsub("_", " ", Species)) |>
+  left_join((rfishbase::load_taxa() |> select(SpecCode, Species)), by = "Species") |> 
+  left_join((rfishbase::ecology() |> select(SpecCode, FoodTroph) |> group_by(SpecCode) |> 
+               summarise(FoodTroph = mean(FoodTroph))), by = "SpecCode") |> 
+  dplyr::select(-SpecCode) |> 
+  mutate(Body_C = predict(model_C, newdata = pick(everything())),
+         Body_N = predict(model_N, newdata = pick(everything())),
+         Body_P = predict(model_P, newdata = pick(everything())))
+
 #### 0. Export the data
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4, height = 7.5, dpi = 300)  
 ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300)  
