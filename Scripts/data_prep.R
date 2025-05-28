@@ -162,3 +162,5 @@ Figure_S2 = C_diet + N_diet + P_diet + plot_annotation(tag_levels = 'A') &
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
 #### 0. Export the data
+ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4, height = 7.5, dpi = 300)  
+ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300)  
