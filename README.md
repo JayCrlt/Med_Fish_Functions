@@ -62,15 +62,15 @@ This repository is organized to facilitate reproducibility and clarity in workfl
   The data for this project will be released upon publication.  
   If you are part of the project team, you must manually add the datasets to the appropriate folder.  
   Please consult the `.gitignore` file to see which data files are expected but excluded from version control:  
-  👉 [View `.gitignore`](https://github.com/JayCrlt/Med_Fish_Functions/blob/main/.gitignore)
+  👉 [See `.gitignore`](https://github.com/JayCrlt/Med_Fish_Functions/blob/main/.gitignore)
 
 - **📊 Figures**  
   All generated figures, plots, and visual outputs will be stored here:  
-  👉 [Outputs Folder](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Outputs)
+  👉 [Outputs](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Outputs)
 
 - **📜 Scripts**  
   Analysis and data processing scripts are stored and numbered sequentially in:  
-  👉 [Scripts Folder](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Scripts)
+  👉 [Scripts](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Scripts)
 
 ---
 
