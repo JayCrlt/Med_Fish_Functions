@@ -1,7 +1,7 @@
 rm(list = ls())
 library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl')
 library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars")
-library("ggridges") ; library("patchwork") ; library("fishflux")
+library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("leaflet.extras")
 
 # Raw data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
@@ -30,6 +30,14 @@ B_Useful_species_list = Medits_total |> group_by(sci.name) |> distinct(sci.name)
   left_join(rfishbase::popqb(), by = "SpecCode") |> 
   dplyr::select(Species, Genus, Family.y, `C/DM`, `N/DM`, `P/DM`, PopQB, FoodType) |> 
   rename(Family = Family.y)
+
+#### 0. Explore the data
+# Look at global data
+medits_coords <- data.frame(Longitude = lon[valid_idx], Latitude = lat[valid_idx])
+map <- leaflet(data = medits_coords) %>%
+  addProviderTiles(providers$Esri.WorldImagery) %>%  
+  addCircleMarkers(~Longitude, ~Latitude, radius = 1, color = "black", fillColor = "red", fillOpacity = 1, weight = .5) %>%
+  addScaleBar(position = "bottomleft") %>% addFullscreenControl()
 
 #### 1. CNP Body mass
 # Distinct species in Nutrients database
@@ -166,10 +174,16 @@ nutrients_imputed = nutrients_imputed |>
          Body_N = predict(model_N, newdata = pick(everything())),
          Body_P = predict(model_P, newdata = pick(everything())))
 
-# example
-zebsco <- model_parameters("Zebrasoma scopas", family = "Acanthuridae",
-                           temp = 27, mirror = "se")
+#### 3. Ask to Nina how to get these parameters
 
-#### 0. Export the data
+# ak × Element-specific assimilation eﬃciency                    (http://fishbioenergetics.org)
+# f0 × Metabolic normalisation constant independent of body mass  (???)
+# α × Mass-scaling exponent                                       (???)
+# θ × Activity scope                                              (???)
+# r × Aspect ratio of caudal fin                                  (FishBase)
+# F0Nz × Mass-specific turnover rate of N                         (3.7e-03)
+# F0Pz × Mass-specific turnover rate of P                         (3.7e-04)
+
+#### 4. Export the data
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4, height = 7.5, dpi = 300)  
 ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300)  
