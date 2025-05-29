@@ -4,7 +4,7 @@ This project explores the use of **functions as rates** to describe key ecosyste
 > **"A function is a rate."** [Jax 2005](https://nsojournals.onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0706.2005.13851.x)
 
 We aim to define and compute three core ecological functions across fish species using data sourced primarily from FishBase and fishery landings. These functions are essential for quantifying ecosystem processes such as biomass production, trophic interactions, and nutrient cycling.
-The project is part of the [HORIZON B-USEFUL project](https://b-useful.eu).
+> The project is part of the [HORIZON B-USEFUL project](https://b-useful.eu).
 
 ---
 
