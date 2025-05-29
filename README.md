@@ -1,4 +1,4 @@
-# 🐟 Functional Rates in Aquatic Ecosystems
+# 🐟 Fish unctional Rates in Mediterranean Sea
 
 This project explores the use of **functions as rates** to describe key ecosystem processes in the Mediterranean Sea over the last 40 years, inspired by the idea that:
 > **"A function is a rate."** [Jax 2005](https://nsojournals.onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0706.2005.13851.x)
