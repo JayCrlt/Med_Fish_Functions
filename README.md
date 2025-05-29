@@ -1,7 +1,7 @@
 # 🐟 Functional Rates in Aquatic Ecosystems
 
 This project explores the use of **functions as rates** to describe key ecosystem processes in the Mediterranean Sea over the last 40 years, inspired by the idea that:
-> **"A function is a rate."** (Jax 2005)
+> **"A function is a rate."** [Jax 2005](https://nsojournals.onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0706.2005.13851.x)
 
 We aim to define and compute three core ecological functions across fish species using data sourced primarily from FishBase. These functions are essential for quantifying ecosystem processes such as biomass production, trophic interactions, and nutrient cycling.
 
@@ -18,7 +18,7 @@ The project focuses on deriving species-level or group-level rates for the follo
 2. ### **Predation/Consumption Rate**
    - Calculated as:  
      \[
-     \text{Predation Rate} = \frac{Q}{B} \times \text{Biomass}
+     **Predation Rate** = (Q / B) × Biomass
      \]
    - Where:
      - `Q/B` = consumption-to-biomass ratio
@@ -26,10 +26,6 @@ The project focuses on deriving species-level or group-level rates for the follo
 
 3. ### **Nutrient Cycling Rate**
    - Estimates the turnover of **Carbon (C), Nitrogen (N), and Phosphorus (P)** per unit of dry mass (DM), supplemented with **FishFlux** data (excretion rates).
-   - Computed as:  
-     \[
-     \frac{C, N, P}{\text{DM}} + \text{FishFlux-derived excretion}
-     \]
 
 ---
 
@@ -41,7 +37,7 @@ We intend to gather required parameters from the following sources:
   - Biological traits: growth rates, Q/B ratios, etc.
 - [RFishBase](https://ropensci.github.io/rfishbase/)
   - R interface to FishBase (some data may not be directly accessible)
-- [FishFlux](https://espace.library.uq.edu.au/view/UQ:701787)
+- [FishFlux](https://besjournals.onlinelibrary.wiley.com/doi/pdf/10.1111/1365-2435.13618)
   - Empirical estimates of nutrient excretion by fishes
 
 > ⚠️ **Note:** Some key parameters may not be fully available through the RFishBase package. Manual data extraction, cross-referencing, or supplementary compilation may be necessary.
@@ -58,10 +54,30 @@ We intend to gather required parameters from the following sources:
 
 ---
 
+## 📂 How to Navigate This Repository
+
+This repository is organized to facilitate reproducibility and clarity in workflow. Here's how to find and use its contents:
+
+- **📁 Data**  
+  The data for this project will be released upon publication.  
+  If you are part of the project team, you must manually add the datasets to the appropriate folder.  
+  Please consult the `.gitignore` file to see which data files are expected but excluded from version control:  
+  👉 [View `.gitignore`](https://github.com/JayCrlt/Med_Fish_Functions/blob/main/.gitignore)
+
+- **📊 Figures**  
+  All generated figures, plots, and visual outputs will be stored here:  
+  👉 [Outputs Folder](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Outputs)
+
+- **📜 Scripts**  
+  Analysis and data processing scripts are stored and numbered sequentially in:  
+  👉 [Scripts Folder](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Scripts)
+
+---
+
 ## 📦 Dependencies (R)
 
 ```r
-─ Session info ───────────────────────────────────────────────────────────────────────────────────────────────────────────
+─ Session info ────────────────────────────────────────────────────────────────────────
  setting  value
  version  R version 4.4.3 (2025-02-28)
  os       macOS Sequoia 15.5
@@ -76,7 +92,7 @@ We intend to gather required parameters from the following sources:
  pandoc   NA
  quarto   1.5.57 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
 
-─ Packages ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+─ Packages ────────────────────────────────────────────────────────────────────────────
  package           * version    date (UTC) lib source
  abind               1.4-8      2024-09-12 [1] CRAN (R 4.4.1)
  ade4                1.7-23     2025-02-14 [1] CRAN (R 4.4.1)

@@ -3,12 +3,6 @@ library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('rea
 library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars")
 library("ggridges") ; library("patchwork") ; library("fishflux")
 
-## What is a function? A function is a rate. (Jax)
-## Then, the idea would be to define three core functions: i) Biomass production through Growth rates;
-## ii) Predation rate through  Q/B * Biomass; iii) nutrient cycling through C,N,P/DM + FishFlux
-## All those data are available in FishBase, but maybe not directly from RFishBase, then, we would have to compile 
-## The data by ourselve
-
 # Raw data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
 Medits_total       <- read.delim("Data/TATB_WMED_1999-2021_clean.csv", sep = ";")
@@ -171,6 +165,10 @@ nutrients_imputed = nutrients_imputed |>
   mutate(Body_C = predict(model_C, newdata = pick(everything())),
          Body_N = predict(model_N, newdata = pick(everything())),
          Body_P = predict(model_P, newdata = pick(everything())))
+
+# example
+zebsco <- model_parameters("Zebrasoma scopas", family = "Acanthuridae",
+                           temp = 27, mirror = "se")
 
 #### 0. Export the data
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4, height = 7.5, dpi = 300)  
