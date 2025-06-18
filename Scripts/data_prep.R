@@ -198,14 +198,15 @@ nutrients_imputed = nutrients_imputed |>
 ## Looking for f0 and alpha numerically
 # Dataset from Rosen et al. 2025
 Metabolic_Rosen = Metabolic_Rosen |> 
-  mutate(SMR_gC_day = SMR * 0.312 * 24, MMR_gC_day = MMR * 0.312 * 24,
+  mutate(SMR_gC_day = SMR * 0.312 * 24 / 1000, MMR_gC_day = MMR * 0.312 * 24 / 1000,
          log_SMR_gC_day = log(SMR_gC_day), log_MMR_gC_day = log(MMR_gC_day),
          log_weight = log(Weight),
          invKT = 1 / (8.617e-5 * (Temperature + 273.15))) 
 # Dataset from Schiettekatte et al. 2021
 Metabolic_Nina = Metabolic_Nina |> 
   rename(SMR_gC_day = SMR, MMR_gC_day = MaxMR) |> 
-  mutate(log_SMR_gC_day = log(SMR_gC_day), log_MMR_gC_day = log(MMR_gC_day),
+  mutate(SMR_gC_day = SMR_gC_day * 0.312 * 24 / 1000, MMR_gC_day = MMR_gC_day * 0.312 * 24 / 1000,
+         log_SMR_gC_day = log(SMR_gC_day), log_MMR_gC_day = log(MMR_gC_day),
          log_weight = log(Weight..kg. * 1000),
          invKT = 1 / (8.617e-5 * (MeanTemp...C. + 273.15))) |> 
   dplyr::filter(Etat == "ok", SMR_gC_day > 0)
@@ -250,8 +251,8 @@ r2_label  <- bquote(italic(R)^2 == .(r2_bayes))
 
 label_data_SMR <- data.frame(
   x = 0.005,
-  y_eq = 400 * 0.8,
-  y_r2 = 400 * 0.7, 
+  y_eq = 1 * 0.8,
+  y_r2 = 1 * 0.7, 
   eq_label = as.character(deparse(eq_label)),
   r2_label = as.character(deparse(r2_label)))
 
@@ -266,8 +267,8 @@ Figure_S3_A <- Metabolic_model_data %>%
   geom_line(aes(y = SMR_pred), color = "mediumpurple", linewidth = 1.2) +
   scale_x_log10(name = "Weight (g)", labels = label_number(accuracy = 0.01),
                 limits = c(0.001, 1000)) +
-  scale_y_log10(name = expression("Standard Metabolic Rate"~(g~C~day^{-1})), labels = label_number(accuracy = 0.01),
-                limits = c(0.004, 400)) +
+  scale_y_log10(name = expression("Standard Metabolic Rate"~(g~C~day^{-1})), labels = label_number(accuracy = 0.0001),
+                limits = c(0.0001, 1)) +
   geom_text(data = label_data_SMR, aes(x = x, y = y_eq, label = eq_label), 
             hjust = 0, vjust = 0, size = 5, parse = TRUE) +
   geom_text(data = label_data_SMR, aes(x = x, y = y_r2, label = r2_label), 
@@ -291,8 +292,8 @@ r2_label  <- bquote(italic(R)^2 == .(r2_bayes))
 
 label_data_MMR <- data.frame(
   x = 0.005,
-  y_eq = 400 * 0.8,
-  y_r2 = 400 * 0.7, 
+  y_eq = 1 * 0.8,
+  y_r2 = 1 * 0.7, 
   eq_label = as.character(deparse(eq_label)),
   r2_label = as.character(deparse(r2_label)))
 
@@ -307,17 +308,17 @@ Figure_S3_B <- Metabolic_model_data %>%
   geom_line(aes(y = MMR_pred), color = "mediumpurple", linewidth = 1.2) +
   scale_x_log10(name = "Weight (g)", labels = label_number(accuracy = 0.01),
                 limits = c(0.001, 1000)) +
-  scale_y_log10(name = expression("Maximum Metabolic Rate"~(g~C~day^{-1})), labels = label_number(accuracy = 0.01),
-                limits = c(0.004, 400)) +
+  scale_y_log10(name = expression("Maximum Metabolic Rate"~(g~C~day^{-1})), labels = label_number(accuracy = 0.0001),
+                limits = c(0.0001, 1)) +
   geom_text(data = label_data_MMR, aes(x = x, y = y_eq, label = eq_label), 
             hjust = 0, vjust = 0, size = 5, parse = TRUE) +
   geom_text(data = label_data_MMR, aes(x = x, y = y_r2, label = r2_label), 
             hjust = 0, vjust = 1.5, size = 5, parse = TRUE)
   theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
-Figure_S3 = Figure_S3_A + Figure_S3_B + plot_annotation(tag_levels = 'A') & 
+(Figure_S3 = Figure_S3_A + Figure_S3_B + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"),
-        axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
+        axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
 
 #### 7. Export the data ----
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
