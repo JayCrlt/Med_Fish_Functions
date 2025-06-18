@@ -1,8 +1,9 @@
 #### Setting up ----
 rm(list = ls())
 library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales")
-library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars"); library("brms")
+library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("brms") ; library("sf")
 library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("leaflet.extras")
+library("rnaturalearth") ; library("rnaturalearthdata")
 
 ## Download data
 # Raw data
@@ -61,10 +62,24 @@ B_Useful_species_list = Medits_total |> group_by(sci.name) |> distinct(sci.name)
   rename(Family = Family.y)
 
 # Look at global data
-medits_coords <- data.frame(Longitude = lon[valid_idx], Latitude = lat[valid_idx])
-map <- leaflet(data = medits_coords) %>%
-  addProviderTiles(providers$Esri.WorldImagery) %>%  
-  addCircleMarkers(~Longitude, ~Latitude, radius = 1, color = "black", fillColor = "red", fillOpacity = 1, weight = .5) %>%
+med_bbox <- st_bbox(c(xmin = -6, xmax = 36, ymin = 30, ymax = 46), crs = 4326)
+med_grid <- st_make_grid(st_as_sfc(med_bbox), cellsize = 0.5, what = "polygons", square = FALSE)
+hex_grid <- st_sf(geometry = med_grid)
+medits_coords <- data.frame(Longitude = as.numeric(gsub(",", ".", Medits_total$MEAN_LONGITUDE_DEC)), 
+                            Latitude = as.numeric(gsub(",", ".", Medits_total$MEAN_LATITUDE_DEC)))
+medits_sf         <- st_as_sf(medits_coords, coords = c("Longitude", "Latitude"), crs = 4326)
+intersection_list <- st_intersects(hex_grid, medits_sf)
+hex_grid$ObsCount <- lengths(intersection_list)
+hex_filtered      <- hex_grid %>% filter(ObsCount > 0)
+
+suppressWarnings({land <- ne_countries(scale = "medium", returnclass = "sf") %>% 
+  st_crop(xmin = -6, xmax = 36, ymin = 30, ymax = 46)
+  hex_marine <- st_difference(hex_filtered, st_union(land))})
+
+pal               <- colorNumeric(palette = "YlOrRd", domain = hex_marine$ObsCount)
+Figure_1          <- leaflet() %>% addProviderTiles(providers$Esri.WorldImagery) %>%
+  addPolygons(data = hex_marine, fillColor = ~pal(ObsCount), fillOpacity = 1, color = "red", 
+              weight = 0.5, smoothFactor = 0.2) %>%
   addScaleBar(position = "bottomleft") %>% addFullscreenControl()
 
 #### 1. CNP Body mass ----
@@ -183,16 +198,19 @@ nutrients_imputed = nutrients_imputed |>
 
 #### 3. Ask to Nina how to get these parameters ----
 
-# ak × Element-specific assimilation eﬃciency                    (http://fishbioenergetics.org)
-# f0 × Metabolic normalisation constant independent of body mass  (f0 = SMR/Biomass^α)
-# α × Mass-scaling exponent                                       (0.75, value by default, Barneche, 2014)
-# θ × Activity scope                                              (Rosen paper, define SMR and MMR, convert in C)
-# r × Aspect ratio of caudal fin                                  (FishBase)
-# F0Nz × Mass-specific turnover rate of N                         (3.7e-03)
-# F0Pz × Mass-specific turnover rate of P                         (3.7e-04)
+## ak   × Element-specific assimilation eﬃciency                     (http://fishbioenergetics.org)
+## f0   × Metabolic normalisation constant independent of body mass   (f0 = SMR/Biomass^α)
+## α    × Mass-scaling exponent                                       (0.75, value by default, Barneche, 2014)
+## θ    × Activity scope                                              (Rosen paper, define SMR and MMR, convert in C)
+# r    × Aspect ratio of caudal fin                                  (FishBase)
+## F0Nz × Mass-specific turnover rate of N                            (3.7e-03)
+## F0Pz × Mass-specific turnover rate of P                            (3.7e-04)
 
 #### 4. Growth ----
 #### 5. Caudal fin ----
+
+Caudal_fin_FB <- rfishbase::morphometrics() |> data.frame() |> dplyr::select("SpecCode", "AspectRatio") |> 
+  left_join(rfishbase::load_taxa(), by = "SpecCode")
 
 #### 6. Metabolism ----
 ## Looking for f0 and alpha numerically
