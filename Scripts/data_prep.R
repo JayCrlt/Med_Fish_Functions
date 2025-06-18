@@ -1,53 +1,24 @@
+#### Setting up ----
 rm(list = ls())
-library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl')
-library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars")
+library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales")
+library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars"); library("brms")
 library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("leaflet.extras")
 
+## Download data
 # Raw data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
 Medits_total       <- read.delim("Data/TATB_WMED_1999-2021_clean.csv", sep = ";")
 Nutrients_FishBase <- readxl::read_excel("Data/Nutrients_FishBase.xlsx") #87 values for C, 206 for N, 46 for P
+Metabolic_Rosen    <- read.delim("Data/Rosen_2025.csv", sep = ";")
+Metabolic_Nina     <- read.delim("Data/Schiettekatte_2021_Metabolism.csv", sep = ",")
+
 # Nina data CNP diet
 cnp_diet           <- read.delim("Data/cnp_diet.csv", sep = ",") |> 
   rename(Species = species) |> 
   left_join(rfishbase::load_taxa(), by = "Species") |> 
   left_join(rfishbase::ecology(), by = "SpecCode") 
 
-# Merge Species_code with Scientific name
-Medits_total = Medits_total |> mutate(spp.code = paste(GENUS, SPECIES, sep = "")) |> 
-  left_join(sp_code_list, by = "spp.code") |> 
-  filter(!str_detect(sci.name, "^NO\\s*")) |> 
-  filter(catfau %in% c("Aa", "Ae", "Ao")) # Work only with fish first
-
-# How many species in the Med Sea to play with?
-length(unique(Medits_total$sci.name)) # 361 fish out of 1246 species in total
-
-# So let's compile first the data we need to evaluate the gaps using rfishbase
-B_Useful_species_list = Medits_total |> group_by(sci.name) |> distinct(sci.name) |> data.frame() |> 
-  rename(Species = sci.name) |> 
-  left_join(Nutrients_FishBase, by = "Species") |> 
-  left_join(rfishbase::load_taxa(), by = "Species") |> 
-  left_join(rfishbase::popqb(), by = "SpecCode") |> 
-  dplyr::select(Species, Genus, Family.y, `C/DM`, `N/DM`, `P/DM`, PopQB, FoodType) |> 
-  rename(Family = Family.y)
-
-#### 0. Explore the data
-# Look at global data
-medits_coords <- data.frame(Longitude = lon[valid_idx], Latitude = lat[valid_idx])
-map <- leaflet(data = medits_coords) %>%
-  addProviderTiles(providers$Esri.WorldImagery) %>%  
-  addCircleMarkers(~Longitude, ~Latitude, radius = 1, color = "black", fillColor = "red", fillOpacity = 1, weight = .5) %>%
-  addScaleBar(position = "bottomleft") %>% addFullscreenControl()
-
-#### 1. CNP Body mass
-# Distinct species in Nutrients database
-Nutrients_FishBase = Nutrients_FishBase |> group_by(Species, Family) |> 
-  summarise(`C/DM` = mean(`C/DM`), `N/DM` = mean(`N/DM`), `P/DM` = mean(`P/DM`))
-# Standardize species names once
-Nutrients_FishBase$Species <- gsub(" ", "_", Nutrients_FishBase$Species)
-# Load phylogeny once
-phy <- fishtree_phylogeny(species = Nutrients_FishBase$Species)
-phy$tip.label <- gsub(" ", "_", phy$tip.label)
+## Functions
 # Imputational function
 impute_trait_phylopars <- function(data, trait_col, phy) {
   trait_vector <- data |>
@@ -69,6 +40,42 @@ impute_trait_phylopars <- function(data, trait_col, phy) {
       !!paste0(trait_name, "_type") := ifelse(is.na(.data[[trait_col]]), "imputed", "measured")) |>
     select(-Estimated, -all_of(trait_col)) |> rename(!!trait_name := paste0(trait_name, "_final"))
   return(result)}
+
+#### 0. Explore and prepare the initial data ----
+# Merge Species_code with Scientific name
+Medits_total = Medits_total |> mutate(spp.code = paste(GENUS, SPECIES, sep = "")) |> 
+  left_join(sp_code_list, by = "spp.code") |> 
+  filter(!str_detect(sci.name, "^NO\\s*")) |> 
+  filter(catfau %in% c("Aa", "Ae", "Ao")) # Work only with fish first
+
+# How many species in the Med Sea to play with?
+length(unique(Medits_total$sci.name)) # 361 fish out of 1246 species in total
+
+# So let's compile first the data we need to evaluate the gaps using rfishbase
+B_Useful_species_list = Medits_total |> group_by(sci.name) |> distinct(sci.name) |> data.frame() |> 
+  rename(Species = sci.name) |> 
+  left_join(Nutrients_FishBase, by = "Species") |> 
+  left_join(rfishbase::load_taxa(), by = "Species") |> 
+  left_join(rfishbase::popqb(), by = "SpecCode") |> 
+  dplyr::select(Species, Genus, Family.y, `C/DM`, `N/DM`, `P/DM`, PopQB, FoodType) |> 
+  rename(Family = Family.y)
+
+# Look at global data
+medits_coords <- data.frame(Longitude = lon[valid_idx], Latitude = lat[valid_idx])
+map <- leaflet(data = medits_coords) %>%
+  addProviderTiles(providers$Esri.WorldImagery) %>%  
+  addCircleMarkers(~Longitude, ~Latitude, radius = 1, color = "black", fillColor = "red", fillOpacity = 1, weight = .5) %>%
+  addScaleBar(position = "bottomleft") %>% addFullscreenControl()
+
+#### 1. CNP Body mass ----
+# Distinct species in Nutrients database
+Nutrients_FishBase = Nutrients_FishBase |> group_by(Species, Family) |> 
+  summarise(`C/DM` = mean(`C/DM`), `N/DM` = mean(`N/DM`), `P/DM` = mean(`P/DM`))
+# Standardize species names once
+Nutrients_FishBase$Species <- gsub(" ", "_", Nutrients_FishBase$Species)
+# Load phylogeny once
+phy <- fishtree_phylogeny(species = Nutrients_FishBase$Species)
+phy$tip.label <- gsub(" ", "_", phy$tip.label)
 nutrients_imputed <- Nutrients_FishBase |>
   impute_trait_phylopars(trait_col = "C/DM", phy = phy) |>
   impute_trait_phylopars(trait_col = "N/DM", phy = phy) |>
@@ -104,8 +111,8 @@ P_body = nutrients_imputed |>
 Figure_S1 = C_body / N_body / P_body + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
-#### 2. CNP diets
-data_summary <- cnp_diet |> group_by(Species) |> summarise_all(mean, na.rm = TRUE) |> filter(!is.na(FoodTroph), !is.na(c))
+#### 2. CNP diets ----
+data_summary <- cnp_diet |> group_by(Species) |> summarise_all(mean, na.rm = T) |> filter(!is.na(FoodTroph), !is.na(c))
 model_C      <- lm(c ~ I(FoodTroph - 1) + 0, data = data_summary)
 data_summary <- data_summary |> mutate(Fitted = predict(model_C),
     Above = ifelse(c > Fitted, "above", "below"), Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
@@ -174,16 +181,145 @@ nutrients_imputed = nutrients_imputed |>
          Body_N = predict(model_N, newdata = pick(everything())),
          Body_P = predict(model_P, newdata = pick(everything())))
 
-#### 3. Ask to Nina how to get these parameters
+#### 3. Ask to Nina how to get these parameters ----
 
 # ak × Element-specific assimilation eﬃciency                    (http://fishbioenergetics.org)
-# f0 × Metabolic normalisation constant independent of body mass  (???)
-# α × Mass-scaling exponent                                       (???)
-# θ × Activity scope                                              (???)
+# f0 × Metabolic normalisation constant independent of body mass  (f0 = SMR/Biomass^α)
+# α × Mass-scaling exponent                                       (0.75, value by default, Barneche, 2014)
+# θ × Activity scope                                              (Rosen paper, define SMR and MMR, convert in C)
 # r × Aspect ratio of caudal fin                                  (FishBase)
 # F0Nz × Mass-specific turnover rate of N                         (3.7e-03)
 # F0Pz × Mass-specific turnover rate of P                         (3.7e-04)
 
-#### 4. Export the data
-ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4, height = 7.5, dpi = 300)  
-ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300)  
+#### 4. Growth ----
+#### 5. Caudal fin ----
+
+#### 6. Metabolism ----
+## Looking for f0 and alpha numerically
+# Dataset from Rosen et al. 2025
+Metabolic_Rosen = Metabolic_Rosen |> 
+  mutate(SMR_gC_day = SMR * 0.312 * 24, MMR_gC_day = MMR * 0.312 * 24,
+         log_SMR_gC_day = log(SMR_gC_day), log_MMR_gC_day = log(MMR_gC_day),
+         log_weight = log(Weight),
+         invKT = 1 / (8.617e-5 * (Temperature + 273.15))) 
+# Dataset from Schiettekatte et al. 2021
+Metabolic_Nina = Metabolic_Nina |> 
+  rename(SMR_gC_day = SMR, MMR_gC_day = MaxMR) |> 
+  mutate(log_SMR_gC_day = log(SMR_gC_day), log_MMR_gC_day = log(MMR_gC_day),
+         log_weight = log(Weight..kg. * 1000),
+         invKT = 1 / (8.617e-5 * (MeanTemp...C. + 273.15))) |> 
+  dplyr::filter(Etat == "ok", SMR_gC_day > 0)
+
+# Combine datasets
+Metabolic = data.frame(SMR_gC_day = c(Metabolic_Rosen$SMR_gC_day, Metabolic_Nina$SMR_gC_day),
+                       MMR_gC_day = c(Metabolic_Rosen$MMR_gC_day, Metabolic_Nina$MMR_gC_day),
+                       log_SMR_gC_day = log(c(Metabolic_Rosen$SMR_gC_day, Metabolic_Nina$SMR_gC_day)),
+                       log_MMR_gC_day = log(c(Metabolic_Rosen$MMR_gC_day, Metabolic_Nina$MMR_gC_day)),
+                       log_weight = log(c(Metabolic_Rosen$Weight, Metabolic_Nina$Weight..kg.*1000)),
+                       Weight = c(Metabolic_Rosen$Weight, Metabolic_Nina$Weight..kg.*1000),
+                       Species = c(Metabolic_Rosen$Species, Metabolic_Nina$Species),
+                       invKT = c(Metabolic_Rosen$invKT, Metabolic_Nina$invKT),
+                       Temperature = c(Metabolic_Rosen$Temperature, Metabolic_Nina$MeanTemp...C.),
+                       Dataset = c(rep("Rosen", length(Metabolic_Rosen$invKT)), 
+                                   rep("Nina", length(Metabolic_Nina$invKT))))
+
+# Test to explore mathematically alpha, E, f0 and theta
+(alpha <- coef(lm(log_SMR_gC_day ~ log_weight + invKT, data = Metabolic))["log_weight"])
+(E     <- coef(lm(log_SMR_gC_day ~ log_weight + invKT, data = Metabolic))["invKT"])
+Temp_ref <- 20 # 20°C; in theory we should take the max value from JJA for each cell!
+Metabolic_summary = Metabolic |> 
+  mutate(f0 = SMR_gC_day / (Weight^alpha * exp(E * (1 / (Temp_ref + 273.15) - 1 / (Temperature + 273.15)) / 8.617e-5)),
+         theta = (SMR_gC_day + MMR_gC_day) / (2 * SMR_gC_day)) |> 
+  group_by(Species) |> 
+  summarise(f0_avg = mean(f0), theta_avg = mean(theta), f0_sd = sd(f0), theta_sd = sd(theta))
+
+# Perform relationship for SMR
+SMR_Weight_relationship <- brm(log_SMR_gC_day ~ log_weight, data = Metabolic,
+  family = gaussian(), prior = c(prior(normal(0, 5), class = "Intercept"), prior(normal(0.75, 0.5), class = "b")),
+  chains = 4, cores = 4, iter = 4000, seed = 123)
+Metabolic_model_data          <- model.frame(SMR_Weight_relationship)
+Metabolic_model_data$SMR_pred <- exp(fitted(SMR_Weight_relationship, scale = "linear")[, "Estimate"])
+Metabolic_model_data$SMR_obs  <- exp(Metabolic_model_data$log_SMR_gC_day)
+Metabolic_model_data$Weight   <- exp(Metabolic_model_data$log_weight)
+
+slope     <- round(fixef(SMR_Weight_relationship)["log_weight", "Estimate"], 3)
+intercept <- round(exp(fixef(SMR_Weight_relationship)["Intercept", "Estimate"]), 3)
+r2_bayes  <- round(bayes_R2(SMR_Weight_relationship)[1], 2)
+eq_label  <- bquote(italic(SMR) == .(intercept) %*% Weight^.(slope))
+r2_label  <- bquote(italic(R)^2 == .(r2_bayes))
+
+label_data_SMR <- data.frame(
+  x = 0.005,
+  y_eq = 400 * 0.8,
+  y_r2 = 400 * 0.7, 
+  eq_label = as.character(deparse(eq_label)),
+  r2_label = as.character(deparse(r2_label)))
+
+Figure_S3_A <- Metabolic_model_data %>%
+  mutate(Above = ifelse(SMR_obs > SMR_pred, "above", "below"),
+         Color = ifelse(Above == "above", "dodgerblue2", "coral2")) |> 
+  ggplot(aes(x = Weight, y = SMR_obs)) +
+  geom_segment(aes(xend = Weight, yend = SMR_pred), linetype = "dotted") +
+  geom_point(aes(fill = Color, color = Above), shape = 21, size = 3, stroke = 1, show.legend = FALSE) +
+  scale_fill_identity() + theme_classic() +
+  scale_color_manual(values = c("above" = "black", "below" = "black")) +
+  geom_line(aes(y = SMR_pred), color = "mediumpurple", linewidth = 1.2) +
+  scale_x_log10(name = "Weight (g)", labels = label_number(accuracy = 0.01),
+                limits = c(0.001, 1000)) +
+  scale_y_log10(name = expression("Standard Metabolic Rate"~(g~C~day^{-1})), labels = label_number(accuracy = 0.01),
+                limits = c(0.004, 400)) +
+  geom_text(data = label_data_SMR, aes(x = x, y = y_eq, label = eq_label), 
+            hjust = 0, vjust = 0, size = 5, parse = TRUE) +
+  geom_text(data = label_data_SMR, aes(x = x, y = y_r2, label = r2_label), 
+            hjust = 0, vjust = 1.5, size = 5, parse = TRUE)
+  theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
+
+# Perform relationship for MMR
+MMR_Weight_relationship <- brm(log_MMR_gC_day ~ log_weight, data = Metabolic,
+  family = gaussian(), prior = c(prior(normal(0, 5), class = "Intercept"), prior(normal(0.75, 0.5), class = "b")),
+  chains = 4, cores = 4, iter = 4000, seed = 123)
+Metabolic_model_data          <- model.frame(MMR_Weight_relationship)
+Metabolic_model_data$MMR_pred <- exp(fitted(MMR_Weight_relationship, scale = "linear")[, "Estimate"])
+Metabolic_model_data$MMR_obs  <- exp(Metabolic_model_data$log_MMR_gC_day)
+Metabolic_model_data$Weight   <- exp(Metabolic_model_data$log_weight)
+
+slope     <- round(fixef(MMR_Weight_relationship)["log_weight", "Estimate"], 3)
+intercept <- round(exp(fixef(MMR_Weight_relationship)["Intercept", "Estimate"]), 3)
+r2_bayes  <- round(bayes_R2(MMR_Weight_relationship)[1], 2)
+eq_label  <- bquote(italic(MMR) == .(intercept) %*% Weight^.(slope))
+r2_label  <- bquote(italic(R)^2 == .(r2_bayes))
+
+label_data_MMR <- data.frame(
+  x = 0.005,
+  y_eq = 400 * 0.8,
+  y_r2 = 400 * 0.7, 
+  eq_label = as.character(deparse(eq_label)),
+  r2_label = as.character(deparse(r2_label)))
+
+Figure_S3_B <- Metabolic_model_data %>%
+  mutate(Above = ifelse(MMR_obs > MMR_pred, "above", "below"),
+         Color = ifelse(Above == "above", "dodgerblue2", "coral2")) |> 
+  ggplot(aes(x = Weight, y = MMR_obs)) +
+  geom_segment(aes(xend = Weight, yend = MMR_pred), linetype = "dotted") +
+  geom_point(aes(fill = Color, color = Above), shape = 21, size = 3, stroke = 1, show.legend = FALSE) +
+  scale_fill_identity() + theme_classic() +
+  scale_color_manual(values = c("above" = "black", "below" = "black")) +
+  geom_line(aes(y = MMR_pred), color = "mediumpurple", linewidth = 1.2) +
+  scale_x_log10(name = "Weight (g)", labels = label_number(accuracy = 0.01),
+                limits = c(0.001, 1000)) +
+  scale_y_log10(name = expression("Maximum Metabolic Rate"~(g~C~day^{-1})), labels = label_number(accuracy = 0.01),
+                limits = c(0.004, 400)) +
+  geom_text(data = label_data_MMR, aes(x = x, y = y_eq, label = eq_label), 
+            hjust = 0, vjust = 0, size = 5, parse = TRUE) +
+  geom_text(data = label_data_MMR, aes(x = x, y = y_r2, label = r2_label), 
+            hjust = 0, vjust = 1.5, size = 5, parse = TRUE)
+  theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
+
+Figure_S3 = Figure_S3_A + Figure_S3_B + plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(size = 16, face = "bold"),
+        axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
+
+#### 7. Export the data ----
+ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
+ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
+ggsave(Figure_S3, filename = "Figure_S3.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
