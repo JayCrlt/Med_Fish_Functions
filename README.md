@@ -30,8 +30,8 @@ We rely on trait databases and recent empirical studies to compile and impute pa
   – Life-history traits, diet, Q/B ratios, trophic level  
 - [RFishBase](https://ropensci.github.io/rfishbase/)  
   – R interface to FishBase (some data may not be accessible)  
-- [Schiettekatte et al., 2021](https://www.nature.com/articles/s41559-022-01710-5) 
-  – Nutrient flux modeling framework (FishFlux)  
+- [Schiettekatte et al., 2021](https://www.nature.com/articles/s41559-022-01710-5)  
+  – Biological trade-offs underpin coral reefecosystem functioning
 - [Rosen et al., 2025 _(in review)_](https://www.authorea.com/doi/full/10.22541/au.174172156.66095042/v1)  
   – Co-variation and trade-offs in ontogenetic scaling of growth and metabolic rates  
 - [Vanni et al., 2017](https://esajournals.onlinelibrary.wiley.com/doi/full/10.1002/ecy.1792)  
@@ -69,9 +69,9 @@ This repository is organized to facilitate reproducibility and clarity in workfl
   Analysis and data processing scripts are stored and numbered sequentially in:  
   👉 [Scripts](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Scripts)
   
-  - **📜 Comunication**  
+- **📜 Oral presentation**  
   All communications will be stored here  
-  👉 [Scripts](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Communication)
+  👉 [Comunication](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Communication)
 
 ---
 
