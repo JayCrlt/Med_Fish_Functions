@@ -3,56 +3,51 @@
 This project explores the use of **functions as rates** to describe key ecosystem processes in the Mediterranean Sea over the last 40 years, inspired by the idea that:
 > **"A function is a rate."** [Jax 2005](https://nsojournals.onlinelibrary.wiley.com/doi/full/10.1111/j.1600-0706.2005.13851.x)
 
-We aim to define and compute three core ecological functions across fish species using data sourced primarily from FishBase and fishery landings. These functions are essential for quantifying ecosystem processes such as biomass production, trophic interactions, and nutrient cycling.
-
 The project is part of the [HORIZON B-USEFUL project](https://b-useful.eu).
 
 ---
 
 ## 📈 Core Functional Definitions
 
-The project focuses on deriving species-level or group-level rates for the following ecological functions:
+All functional rates are derived using the [**FishFlux** framework](https://besjournals.onlinelibrary.wiley.com/doi/pdf/10.1111/1365-2435.13618), enabling the estimation of six key ecological functions at the species or group level:
 
 1. ### **Biomass Production (Growth Rate)**
-   - Estimates the **rate of biomass accumulation** via species-specific growth parameters.
-   - Typically based on von Bertalanffy growth function (VBGF) parameters (`L∞`, `K`, `t₀`) or derived growth performance indices.
+2. ### **Phosphorus (P) Excretion**
+3. ### **Nitrogen (N) Excretion**
+4. ### **Herbivory Consumption**
+5. ### **Piscivory Consumption**
+6. ### **Scavenger Production**
 
-2. ### **Predation/Consumption Rate**
-   - Calculated as:  
-     \[
-     **Predation Rate** = (Q / B) × Biomass
-     \]
-   - Where:
-     - `Q/B` = consumption-to-biomass ratio
-     - `Biomass` = standing stock of the species or group
-
-3. ### **Nutrient Cycling Rate**
-   - Estimates the turnover of **Carbon (C), Nitrogen (N), and Phosphorus (P)** per unit of dry mass (DM), supplemented with **FishFlux** data (excretion rates).
+> Estimates and units are adapted from **Schiettekatte et al., 2021** and extended using approaches from **Rosen et al., 2025** and **Vianna et al., 2017**.
 
 ---
 
 ## 📊 Data Sources
 
-We intend to gather required parameters from the following sources:
+We rely on trait databases and recent empirical studies to compile and impute parameters for FishFlux modeling:
 
-- [FishBase](https://www.fishbase.se/)
-  - Biological traits: growth rates, Q/B ratios, etc.
-- [RFishBase](https://ropensci.github.io/rfishbase/)
-  - R interface to FishBase (some data may not be directly accessible)
-- [FishFlux](https://besjournals.onlinelibrary.wiley.com/doi/pdf/10.1111/1365-2435.13618)
-  - Empirical estimates of nutrient excretion by fishes
+- [FishBase](https://www.fishbase.se/)  
+  – Life-history traits, diet, Q/B ratios, trophic level  
+- [RFishBase](https://ropensci.github.io/rfishbase/)  
+  – R interface to FishBase (some data may not be accessible)  
+- [Schiettekatte et al., 2021](https://www.nature.com/articles/s41559-022-01710-5) 
+  – Nutrient flux modeling framework (FishFlux)  
+- [Rosen et al., 2025 _(in review)_](https://www.authorea.com/doi/full/10.22541/au.174172156.66095042/v1)  
+  – Co-variation and trade-offs in ontogenetic scaling of growth and metabolic rates  
+- [Vanni et al., 2017](https://esajournals.onlinelibrary.wiley.com/doi/full/10.1002/ecy.1792)  
+  – A global database of nitrogen and phosphorus excretion rates of aquatic animals
 
-> ⚠️ **Note:** Some key parameters may not be fully available through the RFishBase package. Manual data extraction, cross-referencing, or supplementary compilation may be necessary.
+> ⚠️ **Note:** Most functional traits are not directly available for all species. A **modeling-based imputation approach** will be applied using **Bayesian methods** and **phylogenetic inference**.
 
 ---
 
 ## 🛠️ Planned Workflow
 
-1. **Define target species or communities**
-2. **Extract growth and Q/B parameters**
-3. **Estimate biomass production and consumption**
-4. **Compile or model C:N:P excretion rates**
-5. **Integrate and analyze functional rates across ecosystems**
+1. **Define target species or communities** 
+2. **Retrieve required parameters to operate FishFlux** 
+3. **Estimate functional rates** 
+4. **Summarize spatial patterns of ecosystem functioning by area unit**
+5. **Link changes in ecosystem functioning to global change drivers** 
 
 ---
 
@@ -73,6 +68,10 @@ This repository is organized to facilitate reproducibility and clarity in workfl
 - **📜 Scripts**  
   Analysis and data processing scripts are stored and numbered sequentially in:  
   👉 [Scripts](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Scripts)
+  
+  - **📜 Comunication**  
+  All communications will be stored here  
+  👉 [Scripts](https://github.com/JayCrlt/Med_Fish_Functions/tree/main/Communication)
 
 ---
 
