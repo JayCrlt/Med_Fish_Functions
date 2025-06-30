@@ -196,21 +196,47 @@ nutrients_imputed = nutrients_imputed |>
          Body_N = predict(model_N, newdata = pick(everything())),
          Body_P = predict(model_P, newdata = pick(everything())))
 
-#### 3. Ask to Nina how to get these parameters ----
+#### 3. Constantes ----
 
-## ak   × Element-specific assimilation eﬃciency                     (http://fishbioenergetics.org)
-## f0   × Metabolic normalisation constant independent of body mass   (f0 = SMR/Biomass^α)
-## α    × Mass-scaling exponent                                       (0.75, value by default, Barneche, 2014)
-## θ    × Activity scope                                              (Rosen paper, define SMR and MMR, convert in C)
-# r    × Aspect ratio of caudal fin                                  (FishBase)
-## F0Nz × Mass-specific turnover rate of N                            (3.7e-03)
-## F0Pz × Mass-specific turnover rate of P                            (3.7e-04)
+aC   = 0.8
+aN   = 0.8
+aP   = 0.7
+F0Nz = 3.7e-03
+F0Pz = 3.7e-04
 
 #### 4. Growth ----
-#### 5. Caudal fin ----
+lw_growth <- rfishbase::length_weight() |> group_by(SpecCode) |>
+  summarise(lwa = mean(a, na.rm = T), lwb = mean(b, na.rm = T)) |>
+  left_join(rfishbase::popgrowth() |> group_by(SpecCode) |>
+    summarise(linf = mean(Loo, na.rm = T), K = mean(K, na.rm = T), t0 = mean(to, na.rm = T)), by = "SpecCode") |>
+  left_join(rfishbase::load_taxa() |> select(SpecCode, Species),  by = "SpecCode") |> select(Species, everything()) |>
+  mutate(t0 = ifelse(is.nan(t0), NA, t0)) |> dplyr::select(-SpecCode)
 
-Caudal_fin_FB <- rfishbase::morphometrics() |> data.frame() |> dplyr::select("SpecCode", "AspectRatio") |> 
-  left_join(rfishbase::load_taxa(), by = "SpecCode")
+lw_growth$Species <- gsub(" ", "_", lw_growth$Species)
+phy_lw            <- fishtree_phylogeny(species = lw_growth$Species)
+phy_lw$tip.label  <- gsub(" ", "_", phy_lw$tip.label)
+lw_growth         <- lw_growth |> filter(!is.na(Species))
+
+lw_growth         <- lw_growth |>
+  impute_trait_phylopars(trait_col = "lwa", phy = phy_lw) |>
+  impute_trait_phylopars(trait_col = "lwb", phy = phy_lw) |>
+  impute_trait_phylopars(trait_col = "linf", phy = phy_lw) |> 
+  impute_trait_phylopars(trait_col = "K", phy = phy_lw) |>
+  impute_trait_phylopars(trait_col = "t0", phy = phy_lw) 
+
+#### 5. Caudal fin ----
+Caudal_fin_FB <- rfishbase::morphometrics() |> data.frame() |> 
+  dplyr::select(SpecCode, AspectRatio) |> 
+  left_join(rfishbase::load_taxa(), by = "SpecCode") |> 
+  dplyr::select(Species, Family, AspectRatio) |> 
+  group_by(Species, Family) |> summarise(AspectRatio = mean(AspectRatio, na.rm = TRUE)) |>
+  mutate(AspectRatio = ifelse(is.nan(AspectRatio), NA, AspectRatio)) |> ungroup()
+
+Caudal_fin_FB$Species <- gsub(" ", "_", Caudal_fin_FB$Species)
+phy_caudal <- fishtree_phylogeny(species = Caudal_fin_FB$Species)
+phy_caudal$tip.label <- gsub(" ", "_", phy_caudal$tip.label)
+caudal_imputed <- Caudal_fin_FB |> filter(!is.na(Species)) |> 
+  impute_trait_phylopars(trait_col = "AspectRatio", phy = phy_caudal)
 
 #### 6. Metabolism ----
 ## Looking for f0 and alpha numerically
