@@ -1,4 +1,4 @@
-#### Setting up ----
+#### Setting up          ----
 rm(list = ls())
 library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales")
 library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("brms") ; library("sf")
@@ -42,7 +42,7 @@ impute_trait_phylopars <- function(data, trait_col, phy) {
     select(-Estimated, -all_of(trait_col)) |> rename(!!trait_name := paste0(trait_name, "_final"))
   return(result)}
 
-#### 0. Explore and prepare the initial data ----
+#### 0. Exploration      ----
 # Merge Species_code with Scientific name
 Medits_total = Medits_total |> mutate(spp.code = paste(GENUS, SPECIES, sep = "")) |> 
   left_join(sp_code_list, by = "spp.code") |> 
@@ -82,7 +82,7 @@ Figure_1          <- leaflet() %>% addProviderTiles(providers$Esri.WorldImagery)
               weight = 0.5, smoothFactor = 0.2) %>%
   addScaleBar(position = "bottomleft") %>% addFullscreenControl()
 
-#### 1. CNP Body mass ----
+#### 1. CNP Body mass    ----
 # Distinct species in Nutrients database
 Nutrients_FishBase = Nutrients_FishBase |> group_by(Species, Family) |> 
   summarise(`C/DM` = mean(`C/DM`), `N/DM` = mean(`N/DM`), `P/DM` = mean(`P/DM`))
@@ -126,7 +126,7 @@ P_body = nutrients_imputed |>
 Figure_S1 = C_body / N_body / P_body + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
-#### 2. CNP diets ----
+#### 2. CNP diets        ----
 data_summary <- cnp_diet |> group_by(Species) |> summarise_all(mean, na.rm = T) |> filter(!is.na(FoodTroph), !is.na(c))
 model_C      <- lm(c ~ I(FoodTroph - 1) + 0, data = data_summary)
 data_summary <- data_summary |> mutate(Fitted = predict(model_C),
@@ -196,7 +196,7 @@ nutrients_imputed = nutrients_imputed |>
          Body_N = predict(model_N, newdata = pick(everything())),
          Body_P = predict(model_P, newdata = pick(everything())))
 
-#### 3. Constantes ----
+#### 3. Constantes       ----
 
 aC   = 0.8
 aN   = 0.8
@@ -204,7 +204,7 @@ aP   = 0.7
 F0Nz = 3.7e-03
 F0Pz = 3.7e-04
 
-#### 4. Growth ----
+#### 4. Growth           ----
 lw_growth <- rfishbase::length_weight() |> group_by(SpecCode) |>
   summarise(lwa = mean(a, na.rm = T), lwb = mean(b, na.rm = T)) |>
   left_join(rfishbase::popgrowth() |> group_by(SpecCode) |>
@@ -224,7 +224,7 @@ lw_growth         <- lw_growth |>
   impute_trait_phylopars(trait_col = "K", phy = phy_lw) |>
   impute_trait_phylopars(trait_col = "t0", phy = phy_lw) 
 
-#### 5. Caudal fin ----
+#### 5. Caudal fin       ----
 Caudal_fin_FB <- rfishbase::morphometrics() |> data.frame() |> 
   dplyr::select(SpecCode, AspectRatio) |> 
   left_join(rfishbase::load_taxa(), by = "SpecCode") |> 
@@ -238,7 +238,7 @@ phy_caudal$tip.label <- gsub(" ", "_", phy_caudal$tip.label)
 caudal_imputed <- Caudal_fin_FB |> filter(!is.na(Species)) |> 
   impute_trait_phylopars(trait_col = "AspectRatio", phy = phy_caudal)
 
-#### 6. Metabolism ----
+#### 6. Metabolism       ----
 ## Looking for f0 and alpha numerically
 # Dataset from Rosen et al. 2025
 Metabolic_Rosen = Metabolic_Rosen |> 
@@ -364,7 +364,7 @@ Figure_S3_B <- Metabolic_model_data %>%
   theme(plot.tag = element_text(size = 16, face = "bold"),
         axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
 
-#### 7. Export the data ----
+#### 7. Export the data  ----
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
 ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
 ggsave(Figure_S3, filename = "Figure_S3.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
