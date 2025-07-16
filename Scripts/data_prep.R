@@ -12,6 +12,7 @@ Medits_total       <- read.delim("Data/TATB_WMED_1999-2021_clean.csv", sep = ";"
 Nutrients_FishBase <- readxl::read_excel("Data/Nutrients_FishBase.xlsx") #87 values for C, 206 for N, 46 for P
 Metabolic_Rosen    <- read.delim("Data/Rosen_2025.csv", sep = ";")
 Metabolic_Nina     <- read.delim("Data/Schiettekatte_2021_Metabolism.csv", sep = ",")
+Hexagonal_grid     <- st_read("Data/Grid 0-1000m_WMED/Grid 0-1000m_WMED.shp")
 
 # Nina data CNP diet
 cnp_diet           <- read.delim("Data/cnp_diet.csv", sep = ",") |> 
@@ -41,6 +42,12 @@ impute_trait_phylopars <- function(data, trait_col, phy) {
       !!paste0(trait_name, "_type") := ifelse(is.na(.data[[trait_col]]), "imputed", "measured")) |>
     select(-Estimated, -all_of(trait_col)) |> rename(!!trait_name := paste0(trait_name, "_final"))
   return(result)}
+# Sampling
+sample_once <- function(df, n_sample) {
+  df %>% group_by(YEAR) %>% slice_sample(n = n_sample) %>%
+    mutate(HAUL_DURATION = as.numeric(HAUL_DURATION), DISTANCE = as.numeric(DISTANCE), TOTAL_WEIGHT_DIST_KG_KM_H = 
+             (TOTAL_WEIGHT_IN_THE_HAUL / 1000) / (DISTANCE / 1000) / (HAUL_DURATION * 60)) %>%
+    group_by(YEAR) %>% summarise(weight_std = sum(TOTAL_WEIGHT_DIST_KG_KM_H, na.rm = T)) %>% ungroup()}
 
 #### 0. Exploration      ----
 # Merge Species_code with Scientific name
@@ -62,25 +69,26 @@ B_Useful_species_list = Medits_total |> group_by(sci.name) |> distinct(sci.name)
   rename(Family = Family.y)
 
 # Look at global data
-med_bbox <- st_bbox(c(xmin = -6, xmax = 36, ymin = 30, ymax = 46), crs = 4326)
-med_grid <- st_make_grid(st_as_sfc(med_bbox), cellsize = 0.5, what = "polygons", square = FALSE)
-hex_grid <- st_sf(geometry = med_grid)
-medits_coords <- data.frame(Longitude = as.numeric(gsub(",", ".", Medits_total$MEAN_LONGITUDE_DEC)), 
-                            Latitude = as.numeric(gsub(",", ".", Medits_total$MEAN_LATITUDE_DEC)))
-medits_sf         <- st_as_sf(medits_coords, coords = c("Longitude", "Latitude"), crs = 4326)
-intersection_list <- st_intersects(hex_grid, medits_sf)
-hex_grid$ObsCount <- lengths(intersection_list)
-hex_filtered      <- hex_grid %>% filter(ObsCount > 0)
-
+hex_grid <- st_transform(Hexagonal_grid, crs = st_crs(medits_sf))
+Hexagonal_grid$ObsCount <- lengths(st_intersects(Hexagonal_grid, medits_sf))
 suppressWarnings({land <- ne_countries(scale = "medium", returnclass = "sf") %>% 
   st_crop(xmin = -6, xmax = 36, ymin = 30, ymax = 46)
-  hex_marine <- st_difference(hex_filtered, st_union(land))})
-
-pal               <- colorNumeric(palette = "YlOrRd", domain = hex_marine$ObsCount)
-Figure_1          <- leaflet() %>% addProviderTiles(providers$Esri.WorldImagery) %>%
-  addPolygons(data = hex_marine, fillColor = ~pal(ObsCount), fillOpacity = 1, color = "red", 
-              weight = 0.5, smoothFactor = 0.2) %>%
+  hex_marine <- st_difference(Hexagonal_grid %>% filter(ObsCount > 0), st_union(land))})
+Figure_1 <- leaflet() %>% addProviderTiles(providers$Esri.WorldImagery) %>%
+  addPolygons(data = hex_marine,
+              fillColor = ~colorNumeric(palette = "YlOrRd", domain = hex_marine$ObsCount)(ObsCount),
+              fillOpacity = 1, color = "red", weight = 1, smoothFactor = 0.2) %>%
   addScaleBar(position = "bottomleft") %>% addFullscreenControl()
+
+# Catch surveys
+Catches_evolution <- map_dfr(1:49, ~ sample_once(Medits_total, 5000) %>% mutate(iteration = .x)) %>% 
+    group_by(YEAR) |> summarise(mean_weight = mean(weight_std, na.rm = T), sd_weight = sd(weight_std, na.rm = T)) |> 
+    ggplot(aes(x = YEAR, y = mean_weight)) +
+    geom_linerange(aes(ymin = mean_weight - sd_weight, ymax = mean_weight + sd_weight)) + 
+    geom_line(linetype = "dotted") + geom_point(shape = 21, fill = "white", size = 3) + 
+    theme_classic() + labs(y = expression(atop(paste("Standardized hauling activity (kg.km"^-1, ".h"^-1, ") ± SD"),
+                                               "(5000 obs.yr"^-1*" and 50 iterations)")), x = "") +
+    theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
 #### 1. CNP Body mass    ----
 # Distinct species in Nutrients database
@@ -271,7 +279,7 @@ Metabolic = data.frame(SMR_gC_day = c(Metabolic_Rosen$SMR_gC_day, Metabolic_Nina
 # Test to explore mathematically alpha, E, f0 and theta
 (alpha <- coef(lm(log_SMR_gC_day ~ log_weight + invKT, data = Metabolic))["log_weight"])
 (E     <- coef(lm(log_SMR_gC_day ~ log_weight + invKT, data = Metabolic))["invKT"])
-Temp_ref <- 20 # 20°C; in theory we should take the max value from JJA for each cell!
+Temp_ref <- 27 # Mainly tropical reef fishes
 Metabolic_summary = Metabolic |> 
   mutate(f0 = SMR_gC_day / (Weight^alpha * exp(E * (1 / (Temp_ref + 273.15) - 1 / (Temperature + 273.15)) / 8.617e-5)),
          theta = (SMR_gC_day + MMR_gC_day) / (2 * SMR_gC_day)) |> 
@@ -316,7 +324,7 @@ Figure_S3_A <- Metabolic_model_data %>%
   geom_text(data = label_data_SMR, aes(x = x, y = y_eq, label = eq_label), 
             hjust = 0, vjust = 0, size = 5, parse = TRUE) +
   geom_text(data = label_data_SMR, aes(x = x, y = y_r2, label = r2_label), 
-            hjust = 0, vjust = 1.5, size = 5, parse = TRUE)
+            hjust = 0, vjust = 1.5, size = 5, parse = TRUE) +
   theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
 # Perform relationship for MMR
@@ -357,14 +365,18 @@ Figure_S3_B <- Metabolic_model_data %>%
   geom_text(data = label_data_MMR, aes(x = x, y = y_eq, label = eq_label), 
             hjust = 0, vjust = 0, size = 5, parse = TRUE) +
   geom_text(data = label_data_MMR, aes(x = x, y = y_r2, label = r2_label), 
-            hjust = 0, vjust = 1.5, size = 5, parse = TRUE)
+            hjust = 0, vjust = 1.5, size = 5, parse = TRUE) +
   theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
 (Figure_S3 = Figure_S3_A + Figure_S3_B + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"),
         axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
 
-#### 7. Export the data  ----
+#### 7. Compilation  ----
+
+
+
+#### 8. Export the data  ----
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
 ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
 ggsave(Figure_S3, filename = "Figure_S3.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
