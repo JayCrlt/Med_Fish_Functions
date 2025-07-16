@@ -374,7 +374,35 @@ Figure_S3_B <- Metabolic_model_data %>%
 
 #### 7. Compilation  ----
 
+### Clean Species info
+# Fix spp. rows
+Western_Med <- B_Useful_species_list %>%
+  distinct(Species, Genus, `C/DM`, `N/DM`, `P/DM`) %>%
+  mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) %>%
+  left_join(load_taxa() %>% select(Genus, Family) %>% distinct(), by = "Genus") %>%
+  relocate(Family, .after = Genus)
+# Fix names
+Western_Med$Species[Western_Med$Species == "Trigloporus lastoviza"] = "Chelidonichthys lastoviza"
+Western_Med$Species[Western_Med$Species == "Pteromylaeus bovinus"]  = "Aetomylaeus bovinus"
+Western_Med$Species[Western_Med$Species == "Liza ramada"]           = "Chelon ramada"
+Western_Med$Species[Western_Med$Species == "Liza aurata"]           = "Chelon auratus"
+Western_Med$Species[Western_Med$Species == "Liza saliens"]          = "Chelon saliens"
+# Fix non-found species
+Western_Med = Western_Med |> mutate(Genus = ifelse(is.na(Genus) & is.na(Family) | Genus == "", word(Species, 1), Genus),
+                             Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) %>%
+  left_join(load_taxa() %>% select(Genus, Family) %>% distinct(), by = "Genus") %>% 
+  relocate(Family.y, .after = Genus) |> dplyr::select(-Family.x) |> rename(Family = Family.y)
+# Fix Family rows
+Western_Med$Family[Western_Med$Species == "Myctophidae"] = "Myctophidae"  
+Western_Med$Genus[Western_Med$Species  == "Myctophidae"] = NA
+Western_Med$Family[Western_Med$Species == "Blenniidae"]  = "Blenniidae"
+Western_Med$Genus[Western_Med$Species  == "Blenniidae"]  = NA
+# Formating the data
+Western_Med = Western_Med |> rename(Qc = `C/DM`, Qn = `N/DM`, Qp = `P/DM`) |> 
+  mutate(Dataset = "B_Useful_MED_W")
 
+### Add CNP info
+nutrients_imputed
 
 #### 8. Export the data  ----
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
