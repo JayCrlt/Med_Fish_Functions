@@ -44,10 +44,20 @@ impute_trait_phylopars <- function(data, trait_col, phy) {
   return(result)}
 # Sampling
 sample_once <- function(df, n_sample) {
-  df %>% group_by(YEAR) %>% slice_sample(n = n_sample) %>%
+  df |> group_by(YEAR) |> slice_sample(n = n_sample) |>
     mutate(HAUL_DURATION = as.numeric(HAUL_DURATION), DISTANCE = as.numeric(DISTANCE), TOTAL_WEIGHT_DIST_KG_KM_H = 
-             (TOTAL_WEIGHT_IN_THE_HAUL / 1000) / (DISTANCE / 1000) / (HAUL_DURATION * 60)) %>%
-    group_by(YEAR) %>% summarise(weight_std = sum(TOTAL_WEIGHT_DIST_KG_KM_H, na.rm = T)) %>% ungroup()}
+             (TOTAL_WEIGHT_IN_THE_HAUL / 1000) / (DISTANCE / 1000) / (HAUL_DURATION * 60)) |>
+    group_by(YEAR) |> summarise(weight_std = sum(TOTAL_WEIGHT_DIST_KG_KM_H, na.rm = T)) |> ungroup()}
+# Function to fill NAs hierarchically for one trait
+fill_trait_hierarchy <- function(df, trait) {
+  trait_sym <- sym(trait)
+  df <- df %>%
+    group_by(Genus) %>%
+    mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) %>%
+    ungroup() %>% group_by(Family) %>%
+    mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) %>%
+    ungroup() %>% mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE), !!trait_sym))
+  return(df)}
 
 #### 0. Exploration      ----
 # Merge Species_code with Scientific name
@@ -69,19 +79,22 @@ B_Useful_species_list = Medits_total |> group_by(sci.name) |> distinct(sci.name)
   rename(Family = Family.y)
 
 # Look at global data
-hex_grid <- st_transform(Hexagonal_grid, crs = st_crs(medits_sf))
+medits_coords           <- data.frame(Longitude = as.numeric(gsub(",", ".", Medits_total$MEAN_LONGITUDE_DEC)), 
+                                      Latitude = as.numeric(gsub(",", ".", Medits_total$MEAN_LATITUDE_DEC)))
+medits_sf               <- st_as_sf(medits_coords, coords = c("Longitude", "Latitude"), crs = 4326)
+hex_grid                <- st_transform(Hexagonal_grid, crs = st_crs(medits_sf))
 Hexagonal_grid$ObsCount <- lengths(st_intersects(Hexagonal_grid, medits_sf))
-suppressWarnings({land <- ne_countries(scale = "medium", returnclass = "sf") %>% 
+suppressWarnings({land  <- ne_countries(scale = "medium", returnclass = "sf") |> 
   st_crop(xmin = -6, xmax = 36, ymin = 30, ymax = 46)
-  hex_marine <- st_difference(Hexagonal_grid %>% filter(ObsCount > 0), st_union(land))})
-Figure_1 <- leaflet() %>% addProviderTiles(providers$Esri.WorldImagery) %>%
+  hex_marine <- st_difference(Hexagonal_grid |> filter(ObsCount > 0), st_union(land))})
+Figure_1 <- leaflet() |> addProviderTiles(providers$Esri.WorldImagery) |>
   addPolygons(data = hex_marine,
               fillColor = ~colorNumeric(palette = "YlOrRd", domain = hex_marine$ObsCount)(ObsCount),
-              fillOpacity = 1, color = "red", weight = 1, smoothFactor = 0.2) %>%
-  addScaleBar(position = "bottomleft") %>% addFullscreenControl()
+              fillOpacity = 1, color = "red", weight = 1, smoothFactor = 0.2) |>
+  addScaleBar(position = "bottomleft") |> addFullscreenControl()
 
 # Catch surveys
-Catches_evolution <- map_dfr(1:49, ~ sample_once(Medits_total, 5000) %>% mutate(iteration = .x)) %>% 
+Catches_evolution <- map_dfr(1:49, ~ sample_once(Medits_total, 5000) |> mutate(iteration = .x)) |> 
     group_by(YEAR) |> summarise(mean_weight = mean(weight_std, na.rm = T), sd_weight = sd(weight_std, na.rm = T)) |> 
     ggplot(aes(x = YEAR, y = mean_weight)) +
     geom_linerange(aes(ymin = mean_weight - sd_weight, ymax = mean_weight + sd_weight)) + 
@@ -135,7 +148,8 @@ Figure_S1 = C_body / N_body / P_body + plot_annotation(tag_levels = 'A') &
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
 #### 2. CNP diets        ----
-data_summary <- cnp_diet |> group_by(Species) |> summarise_all(mean, na.rm = T) |> filter(!is.na(FoodTroph), !is.na(c))
+data_summary <- cnp_diet |> group_by(Species) |> summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE))) |> 
+  filter(!is.na(FoodTroph), !is.na(c))
 model_C      <- lm(c ~ I(FoodTroph - 1) + 0, data = data_summary)
 data_summary <- data_summary |> mutate(Fitted = predict(model_C),
     Above = ifelse(c > Fitted, "above", "below"), Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
@@ -200,9 +214,9 @@ nutrients_imputed = nutrients_imputed |>
   left_join((rfishbase::ecology() |> select(SpecCode, FoodTroph) |> group_by(SpecCode) |> 
                summarise(FoodTroph = mean(FoodTroph))), by = "SpecCode") |> 
   dplyr::select(-SpecCode) |> 
-  mutate(Body_C = predict(model_C, newdata = pick(everything())),
-         Body_N = predict(model_N, newdata = pick(everything())),
-         Body_P = predict(model_P, newdata = pick(everything())))
+  mutate(Diet_C = predict(model_C, newdata = pick(everything())),
+         Diet_N = predict(model_N, newdata = pick(everything())),
+         Diet_P = predict(model_P, newdata = pick(everything())))
 
 #### 3. Constantes       ----
 
@@ -308,7 +322,7 @@ label_data_SMR <- data.frame(
   eq_label = as.character(deparse(eq_label)),
   r2_label = as.character(deparse(r2_label)))
 
-Figure_S3_A <- Metabolic_model_data %>%
+Figure_S3_A <- Metabolic_model_data |>
   mutate(Above = ifelse(SMR_obs > SMR_pred, "above", "below"),
          Color = ifelse(Above == "above", "dodgerblue2", "coral2")) |> 
   ggplot(aes(x = Weight, y = SMR_obs)) +
@@ -349,7 +363,7 @@ label_data_MMR <- data.frame(
   eq_label = as.character(deparse(eq_label)),
   r2_label = as.character(deparse(r2_label)))
 
-Figure_S3_B <- Metabolic_model_data %>%
+Figure_S3_B <- Metabolic_model_data |>
   mutate(Above = ifelse(MMR_obs > MMR_pred, "above", "below"),
          Color = ifelse(Above == "above", "dodgerblue2", "coral2")) |> 
   ggplot(aes(x = Weight, y = MMR_obs)) +
@@ -376,10 +390,10 @@ Figure_S3_B <- Metabolic_model_data %>%
 
 ### Clean Species info
 # Fix spp. rows
-Western_Med <- B_Useful_species_list %>%
-  distinct(Species, Genus, `C/DM`, `N/DM`, `P/DM`) %>%
-  mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) %>%
-  left_join(load_taxa() %>% select(Genus, Family) %>% distinct(), by = "Genus") %>%
+Western_Med <- B_Useful_species_list |>
+  distinct(Species, Genus, `C/DM`, `N/DM`, `P/DM`) |>
+  mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
+  left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |>
   relocate(Family, .after = Genus)
 # Fix names
 Western_Med$Species[Western_Med$Species == "Trigloporus lastoviza"] = "Chelidonichthys lastoviza"
@@ -389,8 +403,8 @@ Western_Med$Species[Western_Med$Species == "Liza aurata"]           = "Chelon au
 Western_Med$Species[Western_Med$Species == "Liza saliens"]          = "Chelon saliens"
 # Fix non-found species
 Western_Med = Western_Med |> mutate(Genus = ifelse(is.na(Genus) & is.na(Family) | Genus == "", word(Species, 1), Genus),
-                             Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) %>%
-  left_join(load_taxa() %>% select(Genus, Family) %>% distinct(), by = "Genus") %>% 
+                             Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
+  left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |> 
   relocate(Family.y, .after = Genus) |> dplyr::select(-Family.x) |> rename(Family = Family.y)
 # Fix Family rows
 Western_Med$Family[Western_Med$Species == "Myctophidae"] = "Myctophidae"  
@@ -401,8 +415,44 @@ Western_Med$Genus[Western_Med$Species  == "Blenniidae"]  = NA
 Western_Med = Western_Med |> rename(Qc = `C/DM`, Qn = `N/DM`, Qp = `P/DM`) |> 
   mutate(Dataset = "B_Useful_MED_W")
 
-### Add CNP info
-nutrients_imputed
+### Add CNP body composition
+Nut_West = nutrients_imputed |> select(Species, Family, CDM, NDM, PDM) |> 
+  rename(Qc = CDM, Qn = NDM, Qp = PDM) |> mutate(Dataset = "Schiettekatte_2021") |> 
+  left_join(load_taxa() |> select(Species, Genus) |> distinct(), by = "Species") |> 
+  relocate(Genus, .before = Family)
+Western_Med = bind_rows(Western_Med, Nut_West)
+# Phylogenetic workflow
+Western_Med$Species <- gsub(" ", "_", Western_Med$Species)
+phy_lw              <- fishtree_phylogeny(species = Western_Med$Species)
+phy_lw$tip.label    <- gsub(" ", "_", phy_lw$tip.label)
+# Body composition
+Western_Med         <- Western_Med |> filter(!is.na(Species)) |> 
+  impute_trait_phylopars(trait_col = "Qc", phy = phy_lw) |>
+  impute_trait_phylopars(trait_col = "Qn", phy = phy_lw) |>
+  impute_trait_phylopars(trait_col = "Qp", phy = phy_lw) |> 
+  select(-c(Qc_type, Qn_type, Qp_type)) |> relocate(Dataset, .after = Qp) |> group_by(Species) |>
+  slice_max(order_by = (Dataset == "B_Useful_MED_W"), with_ties = FALSE) |> ungroup() |> 
+  fill_trait_hierarchy("Qc") %>%
+  fill_trait_hierarchy("Qn") %>%
+  fill_trait_hierarchy("Qp")  
+
+### Add CNP diet
+Western_Med         <- Western_Med |> mutate(Species = gsub("_", " ", Species)) |> 
+  left_join(rfishbase::load_taxa(), by = "Species") |> 
+  left_join(rfishbase::ecology(), by = "SpecCode", relationship = "many-to-many") |> 
+  select(c(1:7,51)) |> mutate(Species = gsub(" ", "_", Species)) |> 
+  rename(Genus = Genus.x, Family = Family.x) |> 
+  impute_trait_phylopars(trait_col = "FoodTroph", phy = phy_lw) |> 
+  fill_trait_hierarchy("FoodTroph") |> select(-FoodTroph_type) |> 
+  mutate(Dc = predict(model_C, newdata = pick(everything())),
+         Dn = predict(model_N, newdata = pick(everything())),
+         Dp = predict(model_P, newdata = pick(everything()))) |> 
+  relocate(c(FoodTroph, Dataset), .after = Dp) |> mutate(Qc = Qc * 100, Qn = Qn * 100, Qp = Qp * 100) |> 
+  dplyr::filter(Dataset == "B_Useful_MED_W") |> rename(h = FoodTroph)
+
+### Add constantes
+Western_Med         <- Western_Med |> mutate(ac = 0.8, an = 0.8, ap = 0.7, f0nz = 3.7e-03, f0pz = 3.7e-04) |> 
+  relocate(Dataset, .after = f0pz)
 
 #### 8. Export the data  ----
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
