@@ -387,57 +387,50 @@ Figure_S3_B <- Metabolic_model_data |>
         axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
 
 #### 7. Compilation  ----
+# Needed for the last phylogenetic imputation with body composition
+sp. =  c(B_Useful_species_list$Species, nutrients_imputed$Species)
+phy_lw              <- fishtree_phylogeny(species = sp.)
+phy_lw$tip.label    <- gsub(" ", "_", phy_lw$tip.label)
 
-### Clean Species info
-# Fix spp. rows
+###### 7.1 Clean Species info  ----
 Western_Med <- B_Useful_species_list |>
   distinct(Species, Genus, `C/DM`, `N/DM`, `P/DM`) |>
-  mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
+  mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus),
+    Species = case_when(
+      Species == "Trigloporus lastoviza" ~ "Chelidonichthys lastoviza",
+      Species == "Pteromylaeus bovinus"  ~ "Aetomylaeus bovinus",
+      Species == "Liza ramada"           ~ "Chelon ramada",
+      Species == "Liza aurata"           ~ "Chelon auratus",
+      Species == "Liza saliens"          ~ "Chelon saliens",
+      TRUE ~ Species)) |>
   left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |>
-  relocate(Family, .after = Genus)
-# Fix names
-Western_Med$Species[Western_Med$Species == "Trigloporus lastoviza"] = "Chelidonichthys lastoviza"
-Western_Med$Species[Western_Med$Species == "Pteromylaeus bovinus"]  = "Aetomylaeus bovinus"
-Western_Med$Species[Western_Med$Species == "Liza ramada"]           = "Chelon ramada"
-Western_Med$Species[Western_Med$Species == "Liza aurata"]           = "Chelon auratus"
-Western_Med$Species[Western_Med$Species == "Liza saliens"]          = "Chelon saliens"
-# Fix non-found species
-Western_Med = Western_Med |> mutate(Genus = ifelse(is.na(Genus) & is.na(Family) | Genus == "", word(Species, 1), Genus),
-                             Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
-  left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |> 
-  relocate(Family.y, .after = Genus) |> dplyr::select(-Family.x) |> rename(Family = Family.y)
-# Fix Family rows
-Western_Med$Family[Western_Med$Species == "Myctophidae"] = "Myctophidae"  
-Western_Med$Genus[Western_Med$Species  == "Myctophidae"] = NA
-Western_Med$Family[Western_Med$Species == "Blenniidae"]  = "Blenniidae"
-Western_Med$Genus[Western_Med$Species  == "Blenniidae"]  = NA
-# Formating the data
-Western_Med = Western_Med |> rename(Qc = `C/DM`, Qn = `N/DM`, Qp = `P/DM`) |> 
-  mutate(Dataset = "B_Useful_MED_W")
+  relocate(Family, .after = Genus) |>
+  mutate(Genus = ifelse((is.na(Genus) & is.na(Family)) | Genus == "", word(Species, 1), Genus),
+    Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
+  left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |>
+  relocate(Family.y, .after = Genus) |> select(-Family.x) |> rename(Family = Family.y) |>
+  mutate(Family = case_when(Species == "Myctophidae" ~ "Myctophidae", Species == "Blenniidae"  ~ "Blenniidae",
+                            TRUE ~ Family), Genus = case_when(Species %in% c("Myctophidae", "Blenniidae") ~ 
+                                                                NA_character_, TRUE ~ Genus)) |> 
+  rename(Qc = `C/DM`, Qn = `N/DM`, Qp = `P/DM`) |> mutate(Dataset = "B_Useful_MED_W") |> 
 
-### Add CNP body composition
-Nut_West = nutrients_imputed |> select(Species, Family, CDM, NDM, PDM) |> 
-  rename(Qc = CDM, Qn = NDM, Qp = PDM) |> mutate(Dataset = "Schiettekatte_2021") |> 
-  left_join(load_taxa() |> select(Species, Genus) |> distinct(), by = "Species") |> 
-  relocate(Genus, .before = Family)
-Western_Med = bind_rows(Western_Med, Nut_West)
-# Phylogenetic workflow
-Western_Med$Species <- gsub(" ", "_", Western_Med$Species)
-phy_lw              <- fishtree_phylogeny(species = Western_Med$Species)
-phy_lw$tip.label    <- gsub(" ", "_", phy_lw$tip.label)
-# Body composition
-Western_Med         <- Western_Med |> filter(!is.na(Species)) |> 
+###### 7.2 Add CNP body composition ----
+  bind_rows(nutrients_imputed |> select(Species, Family, CDM, NDM, PDM) |> 
+                                   rename(Qc = CDM, Qn = NDM, Qp = PDM) |> mutate(Dataset = "Schiettekatte_2021") |> 
+                                   left_join(load_taxa() |> select(Species, Genus) |> distinct(), by = "Species") |> 
+                                   relocate(Genus, .before = Family)) |> filter(!is.na(Species)) |> 
+  mutate(Species = gsub(" ", "_", Species)) |> 
   impute_trait_phylopars(trait_col = "Qc", phy = phy_lw) |>
   impute_trait_phylopars(trait_col = "Qn", phy = phy_lw) |>
   impute_trait_phylopars(trait_col = "Qp", phy = phy_lw) |> 
   select(-c(Qc_type, Qn_type, Qp_type)) |> relocate(Dataset, .after = Qp) |> group_by(Species) |>
   slice_max(order_by = (Dataset == "B_Useful_MED_W"), with_ties = FALSE) |> ungroup() |> 
-  fill_trait_hierarchy("Qc") %>%
-  fill_trait_hierarchy("Qn") %>%
-  fill_trait_hierarchy("Qp")  
+  fill_trait_hierarchy("Qc") |> 
+  fill_trait_hierarchy("Qn") |> 
+  fill_trait_hierarchy("Qp") |> 
 
-### Add CNP diet
-Western_Med         <- Western_Med |> mutate(Species = gsub("_", " ", Species)) |> 
+###### 7.3 Add CNP diet             ----
+  mutate(Species = gsub("_", " ", Species)) |> 
   left_join(rfishbase::load_taxa(), by = "Species") |> 
   left_join(rfishbase::ecology(), by = "SpecCode", relationship = "many-to-many") |> 
   select(c(1:7,51)) |> mutate(Species = gsub(" ", "_", Species)) |> 
@@ -448,13 +441,53 @@ Western_Med         <- Western_Med |> mutate(Species = gsub("_", " ", Species)) 
          Dn = predict(model_N, newdata = pick(everything())),
          Dp = predict(model_P, newdata = pick(everything()))) |> 
   relocate(c(FoodTroph, Dataset), .after = Dp) |> mutate(Qc = Qc * 100, Qn = Qn * 100, Qp = Qp * 100) |> 
-  dplyr::filter(Dataset == "B_Useful_MED_W") |> rename(h = FoodTroph)
+  dplyr::filter(Dataset == "B_Useful_MED_W") |> rename(h = FoodTroph) |> 
 
-### Add constantes
-Western_Med         <- Western_Med |> mutate(ac = 0.8, an = 0.8, ap = 0.7, f0nz = 3.7e-03, f0pz = 3.7e-04) |> 
-  relocate(Dataset, .after = f0pz)
+###### 7.4 Add constantes           ----
+  mutate(ac = 0.8, an = 0.8, ap = 0.7, F0Nz = 3.7e-03, F0Pz = 3.7e-04) |> 
+  relocate(Dataset, .after = F0Pz) |> 
+
+###### 7.5 Add growth parameters    ----
+  mutate(lwa = NA, lwb = NA, linf = NA, K = NA, t = NA) |> 
+  full_join(lw_growth |> dplyr::select(Species, lwa, lwb,linf, K, t) |> 
+              mutate(Dataset = "FishBase") |> rename(t0 = t) |> 
+              relocate(Dataset, .after = t0)) |> 
+  relocate(Dataset, .after = t0) |> group_by(Species) |> 
+  summarise(across(everything(), ~ first(na.omit(.x))), .groups = "drop")  |> 
+  fill_trait_hierarchy("lwa") |> fill_trait_hierarchy("lwb") |> fill_trait_hierarchy("linf") |> 
+  fill_trait_hierarchy("K") |> fill_trait_hierarchy("t0") |> 
+
+###### 7.6 Add Caudal fin          ----
+  mutate(r = NA) |> 
+  full_join(Caudal_fin_FB |> dplyr::select(Species, AspectRatio) |> 
+              rename(r = AspectRatio) |> 
+              mutate(Dataset = "FishBase") |> 
+              relocate(Dataset, .after = r)) |> 
+  relocate(Dataset, .after = r) |> group_by(Species) |> 
+  summarise(across(everything(), ~ first(na.omit(.x))), .groups = "drop")  |> 
+  fill_trait_hierarchy("r") |> 
+
+###### 7.6 Add Metabolism data     ----
+# Workflow: get SMR and MMR thanks to relationships obtained in section 6.0. 
+# Then, use: f0 = SMR_gC_day / Weight^alpha * exp(E * (1 / (Temp_ref + 273.15) - 1 / (Temp_ref + 273.15)) / 8.617e-5))
+# And theta  = (SMR_gC_day + MMR_gC_day) / (2 * SMR_gC_day)
+  mutate(alpha  = round(fixef(SMR_Weight_relationship)["log_weight", "Estimate"], 3)) |> 
+  dplyr::filter(Dataset == "B_Useful_MED_W") |> 
+  relocate(Dataset, .after = alpha) |> select(-t) |> 
+
+##### 7.7 Format data to match obs ----
+  mutate(Species = case_when(
+         Species == "Chelidonichthys lastoviza" ~ "Trigloporus lastoviza",
+         Species == "Aetomylaeus bovinus"       ~ "Pteromylaeus bovinus",
+         Species == "Chelon ramada"             ~ "Liza ramada",
+         Species == "Chelon auratus"            ~ "Liza aurata",
+         Species == "Chelon saliens"            ~ "Liza saliens"))
 
 #### 8. Export the data  ----
+## Data
+save(Western_Med, file = "Outputs/dat_proc/Western_Med.RData")
+
+## Figures
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
 ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
 ggsave(Figure_S3, filename = "Figure_S3.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
