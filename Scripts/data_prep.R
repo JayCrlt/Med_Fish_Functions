@@ -10,6 +10,7 @@ library("rnaturalearth") ; library("rnaturalearthdata")
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
 Medits_total       <- read.delim("Data/TATB_WMED_1999-2021_clean.csv", sep = ";")
 Nutrients_FishBase <- readxl::read_excel("Data/Nutrients_FishBase.xlsx") #87 values for C, 206 for N, 46 for P
+mdw_FishBase       <- readxl::read_excel("Data/mass_conversion_FishBase.xlsx") #87 values for C, 206 for N, 46 for P
 Metabolic_Rosen    <- read.delim("Data/Rosen_2025.csv", sep = ";")
 Metabolic_Nina     <- read.delim("Data/Schiettekatte_2021_Metabolism.csv", sep = ",")
 Hexagonal_grid     <- st_read("Data/Grid 0-1000m_WMED/Grid 0-1000m_WMED.shp")
@@ -190,6 +191,25 @@ aP   = 0.7
 F0Nz = 3.7e-03
 F0Pz = 3.7e-04
 
+# Distinct species in Nutrients database
+mdw_FishBase = Medits_total |> group_by(sci.name) |> distinct(sci.name) |> data.frame() |> 
+  rename(Species = sci.name) |> 
+  full_join((mdw_FishBase |> group_by(Species, Family) |> summarise(mdw = mean(mdw))), by = "Species") |> 
+  left_join(rfishbase::load_taxa(), by = "Species") |> 
+  left_join(rfishbase::popqb(), by = "SpecCode") |> 
+  dplyr::select(Species, Genus, Family.y, mdw) |> 
+  rename(Family = Family.y)
+# Standardize species names once
+mdw_FishBase$Species <- gsub(" ", "_", mdw_FishBase$Species)
+# Load phylogeny once
+phy <- fishtree_phylogeny(species = mdw_FishBase$Species)
+phy$tip.label <- gsub(" ", "_", phy$tip.label)
+mdw_FishBase_imputed <- mdw_FishBase |> impute_trait_phylopars(trait_col = "mdw", phy = phy) |> 
+  group_by(Species) |> summarise(Genus = first(Genus[!is.na(Genus) & Genus != ""]),
+    Family = first(Family[!is.na(Family) & Family != ""]), mdw = first(mdw), mdw_type = first(mdw_type)) |> 
+  mutate(Species = gsub("_", " ", Species)) |> ungroup() |> 
+  dplyr::select(Species, mdw)
+
 #### 4. Growth           ----
 lw_growth <- rfishbase::length_weight() |> group_by(SpecCode) |>
   summarise(lwa = mean(a, na.rm = T), lwb = mean(b, na.rm = T)) |>
@@ -352,7 +372,7 @@ Figure_S3_B <- Metabolic_model_data |>
 
 #### 7. Compilation  ----
 # Needed for the last phylogenetic imputation with body composition
-sp. =  c(B_Useful_species_list$Species, nutrients_imputed$Species)
+sp. =  unique(c(B_Useful_species_list$Species, nutrients_imputed$Species, mdw_FishBase_imputed$Species))
 phy_lw              <- fishtree_phylogeny(species = sp.)
 phy_lw$tip.label    <- gsub(" ", "_", phy_lw$tip.label)
 
@@ -410,6 +430,9 @@ Western_Med <- B_Useful_species_list |>
 ###### 7.4 Add constantes           ----
   mutate(ac = 0.8, an = 0.8, ap = 0.7, F0Nz = 3.7e-03, F0Pz = 3.7e-04) |> 
   relocate(Dataset, .after = F0Pz) |> 
+  left_join(mdw_FishBase_imputed |> mutate(Species = gsub(" ", "_", Species))) |> 
+  fill_trait_hierarchy("mdw") |> 
+  relocate(Dataset, .after = mdw) |> 
 
 ###### 7.5 Add growth parameters    ----
   mutate(lwa = NA, lwb = NA, linf = NA, K = NA, t = NA) |> 

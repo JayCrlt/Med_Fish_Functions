@@ -65,17 +65,14 @@ Medit_Western_FunCatch <- Medits_total |>
   dplyr::select(c(3:4, 9:10, 12, 17, 22, 24, 27:29, 32:33, 37:41, 47:50, 52:72)) |> 
   relocate(c(HEX_ID, MEDITS_CODE), .before = COUNTRY) |> 
   rename(SPECIES = sci.name, GENUS = Genus, FAMILY = Family) |> 
-  mutate(SMR = 0.002 * MASS_IND^alpha, MMR = 0.006 * MASS_IND^0.779,    
+  mutate(SMR = 0.002 * MASS_IND^0.836, MMR = 0.006 * MASS_IND^0.779,    
          TEMP = rowMeans(across(c(BOTTOM_TEMPERATURE_BEGINNING, BOTTOM_TEMPERATURE_END), ~ {
              temp_num <- as.numeric(gsub(",", ".", .)); ifelse(temp_num > 100, temp_num / 10, temp_num)}), na.rm = TRUE),
-         f0 = SMR / MASS_IND^alpha * exp(-0.138 * (1 / (TEMP + 273.15) - 1 / (TEMP + Temp_anomaly + 273.15)) / 8.617e-5),
+         f0 = SMR / MASS_IND^0.836 * exp(-0.138 * (1 / (TEMP + 273.15) - 1 / (TEMP + Temp_anomaly + 273.15)) / 8.617e-5),
          f0 = if_else(is.nan(f0), mean(f0[!is.nan(f0)], na.rm = TRUE), f0),
          theta  = (SMR + MMR) / (2 * SMR)) |> 
   select(-c(SMR, MMR, BOTTOM_TEMPERATURE_BEGINNING, BOTTOM_TEMPERATURE_END, Temp_anomaly)) |> 
-  relocate(TEMP, .after = DISTANCE) |> mutate(mdw = 0.3) |> relocate(mdw, .after = lwb)
-
-##### NEED TO WORK ON mdw PARAMETER
-# https://www.fishbase.se/summary/biomass.php?id=69 
+  relocate(TEMP, .after = DISTANCE) |> relocate(mdw, .after = lwb)
 
 # To process the data, split into hex cell and years
 Medit_Western_FunCatch_split <- Medit_Western_FunCatch |> group_by(HEX_ID, YEAR) |> group_split() # 11172 docs
