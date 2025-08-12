@@ -1,5 +1,5 @@
 #### Setting up          ----
-rm(list = ls())
+rm(list = ls()) ; options(warn = -1)
 library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales")
 library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("brms") ; library("sf")
 library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("leaflet.extras")
@@ -72,7 +72,86 @@ Medit_Western_FunCatch <- Medits_total |>
          f0 = if_else(is.nan(f0), mean(f0[!is.nan(f0)], na.rm = TRUE), f0),
          theta  = (SMR + MMR) / (2 * SMR)) |> 
   select(-c(SMR, MMR, BOTTOM_TEMPERATURE_BEGINNING, BOTTOM_TEMPERATURE_END, Temp_anomaly)) |> 
-  relocate(TEMP, .after = DISTANCE) |> relocate(mdw, .after = lwb)
+  relocate(TEMP, .after = DISTANCE) |> relocate(mdw, .after = lwb) |> 
+  mutate(TL = (MASS_IND / lwa)^(1 / lwb))
 
-# To process the data, split into hex cell and years
-Medit_Western_FunCatch_split <- Medit_Western_FunCatch |> group_by(HEX_ID, YEAR) |> group_split() # 11172 docs
+## FishFlux loop workflow
+# Prepare storing vectors
+model         <- list()
+param_dataset <- list()
+# Prepare the dataset
+Medit_Western_FunCatch = Medit_Western_FunCatch |> 
+  mutate(Fn_mean = NA, Fn_Q1 = NA, Fn_Q3 = NA, Fp_mean = NA, Fp_Q1 = NA, Fp_Q3 = NA, 
+         Gc_mean = NA, Gc_Q1 = NA, Gc_Q3 = NA, Ic_mean = NA, Ic_Q1 = NA, Ic_Q3 = NA)
+
+# Initiate the FishFlux formatting
+for(i in 1:length(Medit_Western_FunCatch$HEX_ID)){
+  param_dataset[[i]] <- list(
+    ac_m =    Medit_Western_FunCatch$ac[i],
+    ac_sd =    Medit_Western_FunCatch$ac[i] * 0.05,
+    an_m =    Medit_Western_FunCatch$an[i],
+    an_sd =    Medit_Western_FunCatch$an[i] * 0.05,
+    ap_m =    Medit_Western_FunCatch$ap[i],
+    ap_sd =    Medit_Western_FunCatch$ap[i] * 0.05,
+    r_m =     Medit_Western_FunCatch$r[i],
+    f0_m =    Medit_Western_FunCatch$f0[i],
+    theta_m = Medit_Western_FunCatch$theta[i],
+    Dc_m =    Medit_Western_FunCatch$Dc[i],
+    Dc_sd =    Medit_Western_FunCatch$Dc[i] * 0.05,
+    Dn_m =    Medit_Western_FunCatch$Dn[i],
+    Dn_sd =    Medit_Western_FunCatch$Dn[i] * 0.05,
+    Dp_m =    Medit_Western_FunCatch$Dp[i],
+    Dp_sd =    Medit_Western_FunCatch$Dp[i] * 0.05,
+    k_m =     Medit_Western_FunCatch$K[i],
+    linf_m =  Medit_Western_FunCatch$linf[i],
+    lwa_m =   Medit_Western_FunCatch$lwa[i],
+    lwb_m =   Medit_Western_FunCatch$lwb[i],
+    Qc_m =    Medit_Western_FunCatch$Qc[i],
+    Qc_sd =    Medit_Western_FunCatch$Qc[i] * 0.05,
+    Qn_m =    Medit_Western_FunCatch$Qn[i],
+    Qn_sd =    Medit_Western_FunCatch$Qn[i] * 0.05,
+    Qp_m =    Medit_Western_FunCatch$Qp[i],
+    Qp_sd =    Medit_Western_FunCatch$Qp[i] * 0.05,
+    t0_m =    Medit_Western_FunCatch$t0[i],
+    h_m =     Medit_Western_FunCatch$h[i],
+    F0nz_m =  Medit_Western_FunCatch$F0Nz[i],
+    F0pz_m =  Medit_Western_FunCatch$F0Pz[i],
+    mdw_m =   Medit_Western_FunCatch$mdw[i],
+    v_m =     Medit_Western_FunCatch$TEMP[i],
+    alpha_m = 0.836)}
+
+# Compile data from FishFlux
+for(i in 1: length(Medit_Western_FunCatch$HEX_ID)){
+  tryCatch({
+  model[[i]] <- extract(cnp_model_mcmc(TL = Medit_Western_FunCatch$TL[i], param = param_dataset[[i]]), c("Fn","Fp", "Gc", "Ic"))
+  Medit_Western_FunCatch$Fn_mean[i] <- model[[i]]$Fn_mean
+  Medit_Western_FunCatch$Fn_Q1[i]   <- model[[i]]$`Fn_2.5%`
+  Medit_Western_FunCatch$Fn_Q3[i]   <- model[[i]]$`Fn_97.5%`
+  Medit_Western_FunCatch$Fp_mean[i] <- model[[i]]$Fp_mean
+  Medit_Western_FunCatch$Fp_Q1[i]   <- model[[i]]$`Fp_2.5%`
+  Medit_Western_FunCatch$Fp_Q3[i]   <- model[[i]]$`Fp_97.5%`
+  Medit_Western_FunCatch$Gc_mean[i] <- model[[i]]$Gc_mean
+  Medit_Western_FunCatch$Gc_Q1[i]   <- model[[i]]$`Gc_2.5%`
+  Medit_Western_FunCatch$Gc_Q3[i]   <- model[[i]]$`Gc_97.5%`
+  Medit_Western_FunCatch$Ic_mean[i] <- model[[i]]$Ic_mean
+  Medit_Western_FunCatch$Ic_Q1[i]   <- model[[i]]$`Ic_2.5%`
+  Medit_Western_FunCatch$Ic_Q3[i]   <- model[[i]]$`Ic_97.5%`
+  }, error = function(e){
+    message("Error in row ", i, ": ", e$message)
+    Medit_Western_FunCatch$Fn_mean[i] <- NA
+    Medit_Western_FunCatch$Fn_Q1[i]   <- NA
+    Medit_Western_FunCatch$Fn_Q3[i]   <- NA
+    Medit_Western_FunCatch$Fp_mean[i] <- NA
+    Medit_Western_FunCatch$Fp_Q1[i]   <- NA
+    Medit_Western_FunCatch$Fp_Q3[i]   <- NA
+    Medit_Western_FunCatch$Gc_mean[i] <- NA
+    Medit_Western_FunCatch$Gc_Q1[i]   <- NA
+    Medit_Western_FunCatch$Gc_Q3[i]   <- NA
+    Medit_Western_FunCatch$Ic_mean[i] <- NA
+    Medit_Western_FunCatch$Ic_Q1[i]   <- NA
+    Medit_Western_FunCatch$Ic_Q3[i]   <- NA
+  })
+}
+
+# Divide for time
+# regression for each cell
