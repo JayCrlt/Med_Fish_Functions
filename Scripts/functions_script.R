@@ -39,3 +39,9 @@ fill_trait_hierarchy <- function(df, trait) {
     mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) %>%
     ungroup() %>% mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE), !!trait_sym))
   return(df)}
+
+
+# Ranking 1% functions
+top_1_percent <- function(x) {
+  threshold <- quantile(x, 0.99, na.rm = TRUE)
+  x >= threshold}
