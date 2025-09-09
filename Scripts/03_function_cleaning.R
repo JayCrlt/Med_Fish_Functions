@@ -60,7 +60,7 @@ Medits_total            <- Medits_total |>
 Medit_Western_FunCatch <- Medits_total |> 
   mutate(NegativeDifference = (if_else(Winfinity > Wmax, Winfinity, Wmax) - MASS_IND) < -100) |> # 100g treshold
   dplyr::filter(NegativeDifference == FALSE) |>  # -72 rows 
-  dplyr::select(c(3:4, 9:10, 12, 17, 22, 24:29, 32:33, 37:41, 47:51, 53:73)) |> 
+  dplyr::select(c(3:4, 9:12, 17, 22, 24:29, 32:33, 37:41, 47:51, 53:73)) |> 
   relocate(c(HEX_ID, MEDITS_CODE), .before = COUNTRY) |> 
   rename(SPECIES = sci.name, GENUS = Genus, FAMILY = Family) |> 
   mutate(SMR = 0.002 * MASS_IND^0.836, MMR = 0.006 * MASS_IND^0.779,    
@@ -155,19 +155,19 @@ for(i in 1: length(Medit_Western_FunCatch$HEX_ID)){
 
 # There was significant numbers of errors due to missing observed temperature, it has been fixed thanks to R_script_02
 Medit_Western_FunCatch_without_NA = Medit_Western_FunCatch |> 
-  anti_join(Medit_Western_FunCatch |> group_by(HEX_ID, YEAR) |> 
+  anti_join(Medit_Western_FunCatch |> group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME) |> 
               summarise(NaN_count = sum(is.nan(TEMP)), Total_count = n(), .groups = "drop") |> 
               filter(NaN_count > 0) |> select(HEX_ID, YEAR), by = c("HEX_ID", "YEAR")) # Remove 257315 - 257243 = -72 obs (< -0.03%) 
 
 # Community computation
 Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA |> 
   mutate(SWEPT_AREA = as.numeric(gsub(",", ".", SWEPT_AREA)),
-         Biomass = TOTAL_WEIGHT_IN_THE_HAUL / (SWEPT_AREA*1e06) / HAUL_DURATION * 60 * 24,
-         community_Fn = Fn_mean * TOTAL_NUMBER_IN_THE_HAUL / (SWEPT_AREA*1e06) / HAUL_DURATION * 60 * 24,
-         community_Fp = Fp_mean * TOTAL_NUMBER_IN_THE_HAUL / (SWEPT_AREA*1e06) / HAUL_DURATION * 60 * 24,
-         community_Gc = Gc_mean * TOTAL_NUMBER_IN_THE_HAUL / (SWEPT_AREA*1e06) / HAUL_DURATION * 60 * 24,
-         community_Ic = Ic_mean * TOTAL_NUMBER_IN_THE_HAUL / (SWEPT_AREA*1e06) / HAUL_DURATION * 60 * 24) |> 
-  group_by(HEX_ID, YEAR, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC) |> 
+         Biomass = TOTAL_WEIGHT_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
+         community_Fn = Fn_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
+         community_Fp = Fp_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
+         community_Gc = Gc_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
+         community_Ic = Ic_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24)) |> 
+  group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC) |> 
   summarise(Biomass = sum(Biomass),
             community_Fn = sum(community_Fn),
             community_Fp = sum(community_Fp),
@@ -285,8 +285,6 @@ Spatial_Phosphorus = ggplot() +
 
 # regression for each cell
 Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Phosphorus
-
-plot(medits_sf_hex)
 
 #### Export the data  ----
 ## Data
