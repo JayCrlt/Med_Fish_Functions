@@ -159,6 +159,7 @@ Medit_Western_FunCatch_without_NA = Medit_Western_FunCatch |>
               summarise(NaN_count = sum(is.nan(TEMP)), Total_count = n(), .groups = "drop") |> 
               filter(NaN_count > 0) |> select(HEX_ID, YEAR), by = c("HEX_ID", "YEAR")) # Remove 257315 - 257243 = -72 obs (< -0.03%) 
 
+
 # Community computation
 Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA |> 
   mutate(SWEPT_AREA = as.numeric(gsub(",", ".", SWEPT_AREA)),
@@ -178,6 +179,12 @@ Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA 
          top1_community_Fn = rank(-community_Fn, ties.method = "first") <= 85,
          top1_community_Fp = rank(-community_Fp, ties.method = "first") <= 85,
          top1_community_Gc = rank(-community_Gc, ties.method = "first") <= 85)
+
+Medit_Western_FunCatch_without_NA_community |>
+  mutate(Longitude = as.numeric(gsub(",", ".", MEAN_LONGITUDE_DEC)),
+         Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |> 
+  ggplot() + 
+  geom_point(aes(x = Longitude, y = Latitude))
 
 # Quick Viz
 i = 321
@@ -214,81 +221,116 @@ i = 321
 medits_coords <- Medit_Western_FunCatch_without_NA_community |>
   mutate(Longitude = as.numeric(gsub(",", ".", MEAN_LONGITUDE_DEC)),
          Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |>
-  select(Longitude, Latitude, Biomass, top1_Biomass, community_Fn, community_Fp, community_Gc,
+  select(YEAR, Longitude, Latitude, Biomass, top1_Biomass, community_Fn, community_Fp, community_Gc,
          top1_community_Fn, top1_community_Fp, top1_community_Gc)
 medits_sf <- st_as_sf(medits_coords, coords = c("Longitude", "Latitude"), crs = 4326)
-hex_grid <- st_transform(Hexagonal_grid, crs = st_crs(medits_sf))
-Hexagonal_grid$Total_Biomass <- sapply(st_intersects(Hexagonal_grid, medits_sf), function(idx) sum(medits_sf$Biomass[idx]))
-Hexagonal_grid$Top1_Biomass <- sapply(st_intersects(Hexagonal_grid, medits_sf |>
-                                                      filter(top1_Biomass)), length) > 0
-
-for(var in c("community_Fn", "community_Fp", "community_Gc")) {
-  Hexagonal_grid[[var]] <- sapply(st_intersects(Hexagonal_grid, medits_sf), function(idx) sum(medits_sf[[var]][idx]))
-  Hexagonal_grid[[paste0("top1_", var)]] <- sapply(st_intersects(Hexagonal_grid, medits_sf |>
-                                                                   filter(get(paste0("top1_", var)))), length) > 0}
+medits_sf_percentile = medits_sf |> mutate(
+    Biomass_class      = percentile_class(Biomass),
+    community_Fn_class = percentile_class(community_Fn),
+    community_Fp_class = percentile_class(community_Fp),
+    community_Gc_class = percentile_class(community_Gc))
 land <- ne_countries(scale = "medium", returnclass = "sf")
-hex_marine <- st_difference(Hexagonal_grid, st_union(land)) |>
-  arrange(desc(Total_Biomass)) |> distinct(geometry, .keep_all = TRUE)
 
-# Plot
-Spatial_Biomass = ggplot() +
+medits_sf_percentile = medits_sf_percentile |> 
+  mutate(Biomass_class = recode(medits_sf_percentile$Biomass_class, 
+  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  community_Gc_class   = recode(medits_sf_percentile$community_Gc_class, 
+  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  community_Fn_class   = recode(medits_sf_percentile$community_Fn_class, 
+  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  community_Fp_class   = recode(medits_sf_percentile$community_Fp_class, 
+  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"))
+
+# Plots
+Spatial_Biomass <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, Biomass_class == "Intermediate"),
+          aes(fill = Biomass_class, color = Biomass_class, size = Biomass_class, shape = Biomass_class)) +
+  geom_sf(data = subset(medits_sf_percentile, Biomass_class %in% c("High", "Low")),
+          aes(fill = Biomass_class, color = Biomass_class, size = Biomass_class, shape = Biomass_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#FF968A", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  geom_sf(data = hex_marine, aes(fill = Total_Biomass), color = "black", show.legend = FALSE) +
-  geom_sf(data = hex_marine |> filter(Top1_Biomass), fill = "red", color = "purple", size = 0.8, show.legend = FALSE) +
-  scale_fill_gradient(low = "moccasin", high = "darkorange") +
-  theme_minimal() +
-  theme(panel.border = element_rect(color = "black", fill = NA, size = 1)) +
-  labs(fill = "Hex Total Biomass", title = "Biomass") +
-  coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) +
-  theme(plot.title = element_text(size = 20),
-        axis.title = element_text(size = 18), 
-        axis.text  = element_text(size = 16))
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Biomass") +
+  labs(fill  = "Fish Biomass Level", color = "Fish Biomass Level", size  = "Fish Biomass Level", shape = "Fish Biomass Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
 
-Spatial_Production = ggplot() +
+Spatial_Production <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, community_Gc_class == "Intermediate"),
+          aes(fill = community_Gc_class, color = community_Gc_class, size = community_Gc_class, shape = community_Gc_class)) +
+  geom_sf(data = subset(medits_sf_percentile, community_Gc_class %in% c("High", "Low")),
+          aes(fill = community_Gc_class, color = community_Gc_class, size = community_Gc_class, shape = community_Gc_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#B4CBF0", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  geom_sf(data = hex_marine, aes(fill = community_Gc), color = "black", show.legend = FALSE) +
-  geom_sf(data = hex_marine |> filter(top1_community_Gc), fill = "red", color = "purple", size = 0.8, show.legend = FALSE) +
-  scale_fill_gradient(low = "moccasin", high = "darkorange") +
-  theme_minimal() +
-  theme(panel.border = element_rect(color = "black", fill = NA, size = 1)) +
-  labs(fill = "Hex Total Biomass", title = "Carbon Production via Growth") +
-  coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) +
-  theme(plot.title = element_text(size = 20),
-        axis.title = element_text(size = 18), 
-        axis.text  = element_text(size = 16))
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Production") +
+  labs(fill = "Fish Production Level", color = "Fish Production Level", size = "Fish Production Level", 
+       shape = "Fish Production Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
 
-Spatial_Nitrogen = ggplot() +
+Spatial_Nitrogen <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, community_Fn_class == "Intermediate"),
+          aes(fill = community_Fn_class, color = community_Fn_class, size = community_Fn_class, shape = community_Fn_class)) +
+  geom_sf(data = subset(medits_sf_percentile, community_Fn_class %in% c("High", "Low")),
+          aes(fill = community_Fn_class, color = community_Fn_class, size = community_Fn_class, shape = community_Fn_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#A3B79C", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  geom_sf(data = hex_marine, aes(fill = community_Fn), color = "black", show.legend = FALSE) +
-  geom_sf(data = hex_marine |> filter(top1_community_Fn), fill = "red", color = "purple", size = 0.8, show.legend = FALSE) +
-  scale_fill_gradient(low = "moccasin", high = "darkorange") +
-  theme_minimal() +
-  theme(panel.border = element_rect(color = "black", fill = NA, size = 1)) +
-  labs(title = "Nitrogen Excretion") +
-  coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) +
-  theme(plot.title = element_text(size = 20),
-        axis.title = element_text(size = 18), 
-        axis.text  = element_text(size = 16))
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Nitrogen Fish Excretion") +
+  labs(fill = "Nitrogen Fish Excretion Level", color = "Nitrogen Fish Excretion Level", size = "Nitrogen Fish Excretion Level", 
+       shape = "Nitrogen Fish Excretion Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
 
-Spatial_Phosphorus = ggplot() +
+Spatial_Phosphorus <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, community_Fp_class == "Intermediate"),
+          aes(fill = community_Fp_class, color = community_Fp_class, size = community_Fp_class, shape = community_Fp_class)) +
+  geom_sf(data = subset(medits_sf_percentile, community_Fp_class %in% c("High", "Low")),
+          aes(fill = community_Fp_class, color = community_Fp_class, size = community_Fp_class, shape = community_Fp_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#FFF1BA", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  geom_sf(data = hex_marine, aes(fill = community_Fp), color = "black", show.legend = FALSE) +
-  geom_sf(data = hex_marine |> filter(top1_community_Fp), fill = "red", color = "purple", size = 0.8, show.legend = FALSE) +
-  scale_fill_gradient(low = "moccasin", high = "darkorange") +
-  theme_minimal() +
-  theme(panel.border = element_rect(color = "black", fill = NA, size = 1)) +
-  labs(title = "Phosphorus Excretion") +
-  coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) +
-  theme(plot.title = element_text(size = 20),
-        axis.title = element_text(size = 18), 
-        axis.text  = element_text(size = 16))
-
-# regression for each cell
-Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Phosphorus
-
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Phosphorus Fish Excretion") +
+  labs(fill = "Phosphorus Fish Excretion Level", color = "Phosphorus Fish Excretion Level", size = "Phosphorus Fish Excretion Level", 
+       shape = "Phosphorus Fish Excretion Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
+  
+Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Phosphorus +
+  plot_layout(guides = "collect", ncol = 1) & theme(legend.position = "none")
+  
 #### Export the data  ----
 ## Data
 # save(Medit_Western_FunCatch_without_NA, file = "Outputs/dat_proc/Medit_Western_FunCatch_without_NA.RData")
-
+  
 ## Figures
-ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 20,  height = 12, dpi = 300)  
+ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 8,  height = 16, dpi = 300)  

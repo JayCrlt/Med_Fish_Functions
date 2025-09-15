@@ -67,3 +67,14 @@ impute_temp <- function(hex_id, date, month) {
     return(same_month$TEMP[which.min(same_month$diff)])}
     candidates$diff <- abs(as.numeric(difftime(candidates$Date, date, units="days")))
     return(candidates$TEMP[which.min(candidates$diff)])}}; return(NA) }
+
+
+# Percentile
+percentile_class <- function(x) {
+  q <- quantile(x, probs = c(0.01, 0.05, 0.95, 0.99), na.rm = TRUE)
+  case_when(
+    x <= q[1] ~ "tail_1%",
+    x <= q[2] ~ "tail_5%",
+    x >= q[3] ~ "top_5%",
+    x >= q[4] ~ "top_1%",
+    TRUE ~ "mid")}
