@@ -8,6 +8,7 @@ library("rnaturalearth") ; library("rnaturalearthdata")
 ## Download data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
 Hexagonal_grid     <- st_read("Data/Grid 0-1000m_WMED/Grid 0-1000m_WMED.shp")
+Guilds             <- readxl::read_xlsx("Data/Guilds_WMED.xlsx") |> mutate(SPECIES = str_replace_all(SPECIES, "\u00A0", " "))
 
 ## Charge from previous scripts
 load("Outputs/dat_proc/Western_Med.RData")
@@ -159,33 +160,45 @@ Medit_Western_FunCatch_without_NA = Medit_Western_FunCatch |>
               summarise(NaN_count = sum(is.nan(TEMP)), Total_count = n(), .groups = "drop") |> 
               filter(NaN_count > 0) |> select(HEX_ID, YEAR), by = c("HEX_ID", "YEAR")) # Remove 257315 - 257243 = -72 obs (< -0.03%) 
 
+# Here added guilds
+Medit_Western_FunCatch_without_NA <- Medit_Western_FunCatch_without_NA |> full_join(Guilds)
 
-# Community computation
+# Community computation at the individual level
 Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA |> 
   mutate(SWEPT_AREA = as.numeric(gsub(",", ".", SWEPT_AREA)),
          Biomass = TOTAL_WEIGHT_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
          community_Fn = Fn_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
          community_Fp = Fp_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
-         community_Gc = Gc_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
-         community_Ic = Ic_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24)) |> 
+         community_Gc = Gc_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24)) |> 
   group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC) |> 
-  summarise(Biomass = sum(Biomass),
-            community_Fn = sum(community_Fn),
-            community_Fp = sum(community_Fp),
-            community_Gc = sum(community_Gc),
-            community_Ic = sum(community_Ic),
-            .groups = "drop") |> 
-  mutate(top1_Biomass      = rank(-Biomass, ties.method = "first") <= 85,
-         top1_community_Fn = rank(-community_Fn, ties.method = "first") <= 85,
-         top1_community_Fp = rank(-community_Fp, ties.method = "first") <= 85,
-         top1_community_Gc = rank(-community_Gc, ties.method = "first") <= 85)
+  summarise(Biomass = sum(Biomass), community_Fn = sum(community_Fn), community_Fp = sum(community_Fp),
+            community_Gc = sum(community_Gc), .groups = "drop") |> 
+  mutate(top1_Biomass      = rank(-Biomass, ties.method = "first") <= 127, #12,666 rows
+         top1_community_Fn = rank(-community_Fn, ties.method = "first") <= 127,
+         top1_community_Fp = rank(-community_Fp, ties.method = "first") <= 127,
+         top1_community_Gc = rank(-community_Gc, ties.method = "first") <= 127)
 
-Medit_Western_FunCatch_without_NA_community |>
-  mutate(Longitude = as.numeric(gsub(",", ".", MEAN_LONGITUDE_DEC)),
-         Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |> 
-  ggplot() + 
-  geom_point(aes(x = Longitude, y = Latitude))
+# Community computation at the trophic guild level
+Medit_Western_FunCatch_without_NA_trophic = Medit_Western_FunCatch_without_NA |> 
+  mutate(SWEPT_AREA = as.numeric(gsub(",", ".", SWEPT_AREA)),
+         community_Ic = Ic_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24)) |> 
+  group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC, Trophic_category) |> 
+  summarise(community_Ic = sum(community_Ic), .groups = "drop") |> 
+  dplyr::filter(Trophic_category %in% c("benthivorous", "generalist", "planktivorous")) |> 
+  mutate(Ic_plank = case_when(Trophic_category == "planktivorous" ~ community_Ic,
+                              Trophic_category == "generalist" ~ 0.25 * community_Ic, TRUE ~ 0),
+         Ic_benthivorous = case_when(Trophic_category == "benthivorous"  ~ community_Ic,
+                                     Trophic_category == "generalist" ~ 0.25 * community_Ic, TRUE ~ 0)) |> 
+  group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC) |> 
+  summarise(Ic_plank = sum(Ic_plank), Ic_benthivorous = sum(Ic_benthivorous), .groups = "drop") |> 
+  mutate(top1_community_Ic_plank = rank(-Ic_plank, ties.method = "first") <= 127,
+         top1_community_Ic_benthivorous = rank(-Ic_benthivorous, ties.method = "first") <= 127) 
 
+# Merge datasets at the community and trophic guild levels
+Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA_community |> 
+  full_join(Medit_Western_FunCatch_without_NA_trophic) |> 
+  relocate(Ic_plank, Ic_benthivorous, .after = community_Gc)
+  
 # Quick Viz
 i = 321
 {ID = unique(Medit_Western_FunCatch_without_NA_community$HEX_ID)[i]
@@ -221,14 +234,17 @@ i = 321
 medits_coords <- Medit_Western_FunCatch_without_NA_community |>
   mutate(Longitude = as.numeric(gsub(",", ".", MEAN_LONGITUDE_DEC)),
          Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |>
-  select(YEAR, Longitude, Latitude, Biomass, top1_Biomass, community_Fn, community_Fp, community_Gc,
-         top1_community_Fn, top1_community_Fp, top1_community_Gc)
+  select(YEAR, Longitude, Latitude, Biomass, top1_Biomass, community_Fn, community_Fp, community_Gc, Ic_plank, 
+         Ic_benthivorous, top1_community_Fn, top1_community_Fp, top1_community_Gc, top1_community_Ic_plank,
+         top1_community_Ic_benthivorous)
 medits_sf <- st_as_sf(medits_coords, coords = c("Longitude", "Latitude"), crs = 4326)
 medits_sf_percentile = medits_sf |> mutate(
-    Biomass_class      = percentile_class(Biomass),
-    community_Fn_class = percentile_class(community_Fn),
-    community_Fp_class = percentile_class(community_Fp),
-    community_Gc_class = percentile_class(community_Gc))
+    Biomass_class       = percentile_class(Biomass),
+    community_Fn_class  = percentile_class(community_Fn),
+    community_Fp_class  = percentile_class(community_Fp),
+    community_Gc_class  = percentile_class(community_Gc),
+    community_Icp_class = percentile_class(Ic_plank),
+    community_Icb_class = percentile_class(Ic_benthivorous))
 land <- ne_countries(scale = "medium", returnclass = "sf")
 
 medits_sf_percentile = medits_sf_percentile |> 
@@ -239,6 +255,10 @@ medits_sf_percentile = medits_sf_percentile |>
   community_Fn_class   = recode(medits_sf_percentile$community_Fn_class, 
   "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
   community_Fp_class   = recode(medits_sf_percentile$community_Fp_class, 
+  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  community_Icp_class   = recode(medits_sf_percentile$community_Icp_class, 
+  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  community_Icb_class   = recode(medits_sf_percentile$community_Icb_class, 
   "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"))
 
 # Plots
@@ -325,12 +345,56 @@ Spatial_Phosphorus <- ggplot() +
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
   
+Spatial_Planktivory <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, community_Icp_class == "Intermediate"),
+          aes(fill = community_Icp_class, color = community_Icp_class, size = community_Icp_class, shape = community_Icp_class)) +
+  geom_sf(data = subset(medits_sf_percentile, community_Icp_class %in% c("High", "Low")),
+          aes(fill = community_Icp_class, color = community_Icp_class, size = community_Icp_class, shape = community_Icp_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#CCA9DD", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
+  geom_sf(data = land, fill = "lightgray", color = "black") +
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish planktivory") +
+  labs(fill = "Fish planktivory Level", color = "Fish planktivory Level", size = "Fish planktivory Level", 
+       shape = "Fish planktivory Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
+
+Spatial_Benthivory <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, community_Icb_class == "Intermediate"),
+          aes(fill = community_Icb_class, color = community_Icb_class, size = community_Icb_class, shape = community_Icb_class)) +
+  geom_sf(data = subset(medits_sf_percentile, community_Icb_class %in% c("High", "Low")),
+          aes(fill = community_Icb_class, color = community_Icb_class, size = community_Icb_class, shape = community_Icb_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#FAC898", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
+  geom_sf(data = land, fill = "lightgray", color = "black") +
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Benthivory") +
+  labs(fill = "Fish benthivory Level", color = "Fish benthivory Level", size = "Fish benthivory Level", 
+       shape = "Fish benthivory Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
+
 Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Phosphorus +
-  plot_layout(guides = "collect", ncol = 1) & theme(legend.position = "none")
+  Spatial_Planktivory + Spatial_Benthivory + 
+  plot_layout(guides = "collect", ncol = 2) & theme(legend.position = "none")
   
 #### Export the data  ----
 ## Data
 # save(Medit_Western_FunCatch_without_NA, file = "Outputs/dat_proc/Medit_Western_FunCatch_without_NA.RData")
+# save(medits_sf_percentile, file = "Outputs/dat_proc/medits_sf_percentile.Rdata")
   
 ## Figures
-ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 8,  height = 16, dpi = 300)  
+ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 12,  height = 16, dpi = 300)  
