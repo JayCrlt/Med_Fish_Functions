@@ -355,7 +355,7 @@ Spatial_Planktivory <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish planktivory") +
+  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Planktivory") +
   labs(fill = "Fish planktivory Level", color = "Fish planktivory Level", size = "Fish planktivory Level", 
        shape = "Fish planktivory Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
