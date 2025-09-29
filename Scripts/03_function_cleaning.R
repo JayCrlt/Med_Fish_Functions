@@ -7,11 +7,11 @@ library("rnaturalearth") ; library("rnaturalearthdata")
 
 ## Download data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
-Hexagonal_grid     <- st_read("Data/Grid 0-1000m_WMED/Grid 0-1000m_WMED.shp")
-Guilds             <- readxl::read_xlsx("Data/Guilds_WMED.xlsx") |> mutate(SPECIES = str_replace_all(SPECIES, "\u00A0", " "))
+Hexagonal_grid     <- st_read("Data/Grid_0-1000m_Med.shp")
+Guilds             <- readxl::read_xlsx("Data/Guilds_MED.xlsx") |> mutate(SPECIES = str_replace_all(SPECIES, "\u00A0", " "))
 
 ## Charge from previous scripts
-load("Outputs/dat_proc/Western_Med.RData")
+load("Outputs/dat_proc/Med_all.RData")
 load("Outputs/dat_proc/Medit_Temp.RData")
 
 ## Functions
@@ -19,10 +19,12 @@ source("Scripts/00_functions_script.R")
 
 # add spatial hex info
 medits_sf               <- st_as_sf(data.frame(Longitude = as.numeric(gsub(",", ".", MEDIT_TEMP$MEAN_LONGITUDE_DEC)), 
-                                               Latitude = as.numeric(gsub(",", ".", MEDIT_TEMP$MEAN_LATITUDE_DEC))), 
+                                               Latitude  = as.numeric(gsub(",", ".", MEDIT_TEMP$MEAN_LATITUDE_DEC)),
+                                               ID        = seq_len(nrow(MEDIT_TEMP))), 
                                     coords = c("Longitude", "Latitude"), crs = 4326)
-medits_sf_hex           <- st_join(medits_sf, Hexagonal_grid["grid.id"], left = TRUE)
-MEDIT_TEMP$HEX_ID       <- medits_sf_hex$grid.id
+medits_sf_hex           <- st_join(medits_sf, Hexagonal_grid["grid_id"], left = TRUE)
+medits_sf_hex_unique    <- medits_sf_hex |> st_drop_geometry() |> group_by(ID) |> summarise(grid_id = first(grid_id)) |> ungroup()
+MEDIT_TEMP$HEX_ID       <- medits_sf_hex_unique$grid_id
 MEDIT_TEMP$MASS_IND     <- MEDIT_TEMP$TOTAL_WEIGHT_IN_THE_HAUL / MEDIT_TEMP$TOTAL_NUMBER_IN_THE_HAUL
 
 # Clean data according to biomass vs species
@@ -31,11 +33,11 @@ Medits_total            <- MEDIT_TEMP |> dplyr::filter(TOTAL_WEIGHT_IN_THE_HAUL 
   filter(catfau %in% c("Aa", "Ae", "Ao")) 
 
 # Some species are unexpectedly heavy...
-Western_Med$Species  <- gsub(" ", "_", Western_Med$Species)
-phy_lw               <- fishtree_phylogeny(species = unique(Western_Med$Species))
+Med_all$Species  <- gsub(" ", "_", Med_all$Species)
+phy_lw               <- fishtree_phylogeny(species = unique(Med_all$Species))
 phy_lw$tip.label     <- gsub(" ", "_", phy_lw$tip.label)
 
-Western_Med = Western_Med |> 
+Med_all = Med_all |> 
   mutate(Species = gsub("_", " ", Species)) |> 
   left_join((rfishbase::load_taxa() |> select(Species, SpecCode)), by = "Species") |> 
   mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |> 
@@ -54,11 +56,11 @@ Medits_total            <- Medits_total |>
     sci.name == "Liza ramada"           ~ "Chelon ramada",
     sci.name == "Liza aurata"           ~ "Chelon auratus",
     sci.name == "Liza saliens"          ~ "Chelon saliens",
-    TRUE ~ sci.name)) |> left_join(Western_Med |> rename(sci.name = Species)) |>
+    TRUE ~ sci.name)) |> left_join(Med_all |> rename(sci.name = Species)) |>
   filter(!grepl("^NO\\s+", sci.name))
 
 # Clean errors according to maximum weight
-Medit_Western_FunCatch <- Medits_total |> 
+Medit_FunCatch <- Medits_total |> 
   mutate(NegativeDifference = (if_else(Winfinity > Wmax, Winfinity, Wmax) - MASS_IND) < -100) |> # 100g treshold
   dplyr::filter(NegativeDifference == FALSE) |>  # -72 rows 
   dplyr::select(c(3:4, 9:12, 17, 22, 24:29, 32:33, 37:41, 47:51, 53:73)) |> 
@@ -79,92 +81,92 @@ Medit_Western_FunCatch <- Medits_total |>
 model         <- list()
 param_dataset <- list()
 # Prepare the dataset
-Medit_Western_FunCatch = Medit_Western_FunCatch |> 
+Medit_FunCatch = Medit_FunCatch |> 
   mutate(Fn_mean = NA, Fn_Q1 = NA, Fn_Q3 = NA, Fp_mean = NA, Fp_Q1 = NA, Fp_Q3 = NA, 
          Gc_mean = NA, Gc_Q1 = NA, Gc_Q3 = NA, Ic_mean = NA, Ic_Q1 = NA, Ic_Q3 = NA)
 
 # Initiate the FishFlux formatting
-for(i in 1:length(Medit_Western_FunCatch$HEX_ID)){
+for(i in 1:length(Medit_FunCatch$HEX_ID)){
   param_dataset[[i]] <- list(
-    ac_m    = Medit_Western_FunCatch$ac[i],
-    ac_sd   = Medit_Western_FunCatch$ac[i] * 0.05,
-    an_m    = Medit_Western_FunCatch$an[i],
-    an_sd   = Medit_Western_FunCatch$an[i] * 0.05,
-    ap_m    = Medit_Western_FunCatch$ap[i],
-    ap_sd   = Medit_Western_FunCatch$ap[i] * 0.05,
-    r_m     = Medit_Western_FunCatch$r[i],
-    f0_m    = Medit_Western_FunCatch$f0[i],
-    theta_m = Medit_Western_FunCatch$theta[i],
-    Dc_m    = Medit_Western_FunCatch$Dc[i],
-    Dc_sd   = Medit_Western_FunCatch$Dc[i] * 0.05,
-    Dn_m    = Medit_Western_FunCatch$Dn[i],
-    Dn_sd   = Medit_Western_FunCatch$Dn[i] * 0.05,
-    Dp_m    = Medit_Western_FunCatch$Dp[i],
-    Dp_sd   = Medit_Western_FunCatch$Dp[i] * 0.05,
-    k_m     = Medit_Western_FunCatch$K[i],
-    linf_m  = Medit_Western_FunCatch$linf[i],
-    lwa_m   = Medit_Western_FunCatch$lwa[i],
-    lwb_m   = Medit_Western_FunCatch$lwb[i],
-    Qc_m    = Medit_Western_FunCatch$Qc[i],
-    Qc_sd   = Medit_Western_FunCatch$Qc[i] * 0.05,
-    Qn_m    = Medit_Western_FunCatch$Qn[i],
-    Qn_sd   = Medit_Western_FunCatch$Qn[i] * 0.05,
-    Qp_m    = Medit_Western_FunCatch$Qp[i],
-    Qp_sd   = Medit_Western_FunCatch$Qp[i] * 0.05,
-    t0_m    = Medit_Western_FunCatch$t0[i],
-    h_m     = Medit_Western_FunCatch$h[i],
-    F0nz_m  = Medit_Western_FunCatch$F0Nz[i],
-    F0pz_m  = Medit_Western_FunCatch$F0Pz[i],
-    mdw_m   = Medit_Western_FunCatch$mdw[i],
-    v_m     = Medit_Western_FunCatch$TEMP[i],
+    ac_m    = Medit_FunCatch$ac[i],
+    ac_sd   = Medit_FunCatch$ac[i] * 0.05,
+    an_m    = Medit_FunCatch$an[i],
+    an_sd   = Medit_FunCatch$an[i] * 0.05,
+    ap_m    = Medit_FunCatch$ap[i],
+    ap_sd   = Medit_FunCatch$ap[i] * 0.05,
+    r_m     = Medit_FunCatch$r[i],
+    f0_m    = Medit_FunCatch$f0[i],
+    theta_m = Medit_FunCatch$theta[i],
+    Dc_m    = Medit_FunCatch$Dc[i],
+    Dc_sd   = Medit_FunCatch$Dc[i] * 0.05,
+    Dn_m    = Medit_FunCatch$Dn[i],
+    Dn_sd   = Medit_FunCatch$Dn[i] * 0.05,
+    Dp_m    = Medit_FunCatch$Dp[i],
+    Dp_sd   = Medit_FunCatch$Dp[i] * 0.05,
+    k_m     = Medit_FunCatch$K[i],
+    linf_m  = Medit_FunCatch$linf[i],
+    lwa_m   = Medit_FunCatch$lwa[i],
+    lwb_m   = Medit_FunCatch$lwb[i],
+    Qc_m    = Medit_FunCatch$Qc[i],
+    Qc_sd   = Medit_FunCatch$Qc[i] * 0.05,
+    Qn_m    = Medit_FunCatch$Qn[i],
+    Qn_sd   = Medit_FunCatch$Qn[i] * 0.05,
+    Qp_m    = Medit_FunCatch$Qp[i],
+    Qp_sd   = Medit_FunCatch$Qp[i] * 0.05,
+    t0_m    = Medit_FunCatch$t0[i],
+    h_m     = Medit_FunCatch$h[i],
+    F0nz_m  = Medit_FunCatch$F0Nz[i],
+    F0pz_m  = Medit_FunCatch$F0Pz[i],
+    mdw_m   = Medit_FunCatch$mdw[i],
+    v_m     = Medit_FunCatch$TEMP[i],
     alpha_m = 0.836)}
 
 # Compile data from FishFlux
-pb <- txtProgressBar(min = 0, max = length(Medit_Western_FunCatch$HEX_ID), style = 3)
-for(i in 1: length(Medit_Western_FunCatch$HEX_ID)){
+pb <- txtProgressBar(min = 0, max = length(Medit_FunCatch$HEX_ID), style = 3)
+for(i in 1: length(Medit_FunCatch$HEX_ID)){
   tryCatch({
     invisible(capture.output({
-  model[[i]] <- extract(cnp_model_mcmc(TL = Medit_Western_FunCatch$TL[i], param = param_dataset[[i]]), c("Fn","Fp", "Gc", "Ic"))}))
-  Medit_Western_FunCatch$Fn_mean[i] <- model[[i]]$Fn_mean
-  Medit_Western_FunCatch$Fn_Q1[i]   <- model[[i]]$`Fn_2.5%`
-  Medit_Western_FunCatch$Fn_Q3[i]   <- model[[i]]$`Fn_97.5%`
-  Medit_Western_FunCatch$Fp_mean[i] <- model[[i]]$Fp_mean
-  Medit_Western_FunCatch$Fp_Q1[i]   <- model[[i]]$`Fp_2.5%`
-  Medit_Western_FunCatch$Fp_Q3[i]   <- model[[i]]$`Fp_97.5%`
-  Medit_Western_FunCatch$Gc_mean[i] <- model[[i]]$Gc_mean
-  Medit_Western_FunCatch$Gc_Q1[i]   <- model[[i]]$`Gc_2.5%`
-  Medit_Western_FunCatch$Gc_Q3[i]   <- model[[i]]$`Gc_97.5%`
-  Medit_Western_FunCatch$Ic_mean[i] <- model[[i]]$Ic_mean
-  Medit_Western_FunCatch$Ic_Q1[i]   <- model[[i]]$`Ic_2.5%`
-  Medit_Western_FunCatch$Ic_Q3[i]   <- model[[i]]$`Ic_97.5%`
+  model[[i]] <- extract(cnp_model_mcmc(TL = Medit_FunCatch$TL[i], param = param_dataset[[i]]), c("Fn","Fp", "Gc", "Ic"))}))
+  Medit_FunCatch$Fn_mean[i] <- model[[i]]$Fn_mean
+  Medit_FunCatch$Fn_Q1[i]   <- model[[i]]$`Fn_2.5%`
+  Medit_FunCatch$Fn_Q3[i]   <- model[[i]]$`Fn_97.5%`
+  Medit_FunCatch$Fp_mean[i] <- model[[i]]$Fp_mean
+  Medit_FunCatch$Fp_Q1[i]   <- model[[i]]$`Fp_2.5%`
+  Medit_FunCatch$Fp_Q3[i]   <- model[[i]]$`Fp_97.5%`
+  Medit_FunCatch$Gc_mean[i] <- model[[i]]$Gc_mean
+  Medit_FunCatch$Gc_Q1[i]   <- model[[i]]$`Gc_2.5%`
+  Medit_FunCatch$Gc_Q3[i]   <- model[[i]]$`Gc_97.5%`
+  Medit_FunCatch$Ic_mean[i] <- model[[i]]$Ic_mean
+  Medit_FunCatch$Ic_Q1[i]   <- model[[i]]$`Ic_2.5%`
+  Medit_FunCatch$Ic_Q3[i]   <- model[[i]]$`Ic_97.5%`
   }, error = function(e){
     message("Error in row ", i)
-    Medit_Western_FunCatch$Fn_mean[i] <- NA
-    Medit_Western_FunCatch$Fn_Q1[i]   <- NA
-    Medit_Western_FunCatch$Fn_Q3[i]   <- NA
-    Medit_Western_FunCatch$Fp_mean[i] <- NA
-    Medit_Western_FunCatch$Fp_Q1[i]   <- NA
-    Medit_Western_FunCatch$Fp_Q3[i]   <- NA
-    Medit_Western_FunCatch$Gc_mean[i] <- NA
-    Medit_Western_FunCatch$Gc_Q1[i]   <- NA
-    Medit_Western_FunCatch$Gc_Q3[i]   <- NA
-    Medit_Western_FunCatch$Ic_mean[i] <- NA
-    Medit_Western_FunCatch$Ic_Q1[i]   <- NA
-    Medit_Western_FunCatch$Ic_Q3[i]   <- NA
+    Medit_FunCatch$Fn_mean[i] <- NA
+    Medit_FunCatch$Fn_Q1[i]   <- NA
+    Medit_FunCatch$Fn_Q3[i]   <- NA
+    Medit_FunCatch$Fp_mean[i] <- NA
+    Medit_FunCatch$Fp_Q1[i]   <- NA
+    Medit_FunCatch$Fp_Q3[i]   <- NA
+    Medit_FunCatch$Gc_mean[i] <- NA
+    Medit_FunCatch$Gc_Q1[i]   <- NA
+    Medit_FunCatch$Gc_Q3[i]   <- NA
+    Medit_FunCatch$Ic_mean[i] <- NA
+    Medit_FunCatch$Ic_Q1[i]   <- NA
+    Medit_FunCatch$Ic_Q3[i]   <- NA
   })
   setTxtProgressBar(pb, i)}
 
 # There was significant numbers of errors due to missing observed temperature, it has been fixed thanks to R_script_02
-Medit_Western_FunCatch_without_NA = Medit_Western_FunCatch |> 
-  anti_join(Medit_Western_FunCatch |> group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME) |> 
+Medit_FunCatch_without_NA = Medit_FunCatch |> 
+  anti_join(Medit_FunCatch |> group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME) |> 
               summarise(NaN_count = sum(is.nan(TEMP)), Total_count = n(), .groups = "drop") |> 
               filter(NaN_count > 0) |> select(HEX_ID, YEAR), by = c("HEX_ID", "YEAR")) # Remove 257315 - 257243 = -72 obs (< -0.03%) 
 
 # Here added guilds
-Medit_Western_FunCatch_without_NA <- Medit_Western_FunCatch_without_NA |> full_join(Guilds)
+Medit_FunCatch_without_NA <- Medit_FunCatch_without_NA |> full_join(Guilds)
 
 # Community computation at the individual level
-Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA |> 
+Medit_FunCatch_without_NA_community = Medit_FunCatch_without_NA |> 
   mutate(SWEPT_AREA = as.numeric(gsub(",", ".", SWEPT_AREA)),
          Biomass = TOTAL_WEIGHT_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
          community_Fn = Fn_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24),
@@ -179,7 +181,7 @@ Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA 
          top1_community_Gc = rank(-community_Gc, ties.method = "first") <= 127)
 
 # Community computation at the trophic guild level
-Medit_Western_FunCatch_without_NA_trophic = Medit_Western_FunCatch_without_NA |> 
+Medit_FunCatch_without_NA_trophic = Medit_FunCatch_without_NA |> 
   mutate(SWEPT_AREA = as.numeric(gsub(",", ".", SWEPT_AREA)),
          community_Ic = Ic_mean * TOTAL_NUMBER_IN_THE_HAUL / HAUL_AREA / (HAUL_DURATION / 60 * 24)) |> 
   group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC, Trophic_category) |> 
@@ -195,14 +197,14 @@ Medit_Western_FunCatch_without_NA_trophic = Medit_Western_FunCatch_without_NA |>
          top1_community_Ic_benthivorous = rank(-Ic_benthivorous, ties.method = "first") <= 127) 
 
 # Merge datasets at the community and trophic guild levels
-Medit_Western_FunCatch_without_NA_community = Medit_Western_FunCatch_without_NA_community |> 
-  full_join(Medit_Western_FunCatch_without_NA_trophic) |> 
+Medit_FunCatch_without_NA_community = Medit_FunCatch_without_NA_community |> 
+  full_join(Medit_FunCatch_without_NA_trophic) |> 
   relocate(Ic_plank, Ic_benthivorous, .after = community_Gc)
   
 # Quick Viz
 i = 321
-{ID = unique(Medit_Western_FunCatch_without_NA_community$HEX_ID)[i]
-(Medit_Western_FunCatch_without_NA_community |> dplyr::filter(HEX_ID == ID) |> 
+{ID = unique(Medit_FunCatch_without_NA_community$HEX_ID)[i]
+(Medit_FunCatch_without_NA_community |> dplyr::filter(HEX_ID == ID) |> 
   ggplot(aes(x = YEAR, y = community_Gc)) + 
     geom_point(size = 4, shape = 21, fill = "orange", color = "black") + 
     ggtitle("Carbon Production via Growth") + theme_classic() +
@@ -211,7 +213,7 @@ i = 321
           axis.text  = element_text(size = 16)) +
     scale_x_continuous(name = "", limits = c(1999, 2021), breaks = seq(2000, 2020, 5)) +
     scale_y_continuous(name = expression("Production (gC"~m^-2~d^-1*")"))) +
-(Medit_Western_FunCatch_without_NA_community |> dplyr::filter(HEX_ID == ID) |> 
+(Medit_FunCatch_without_NA_community |> dplyr::filter(HEX_ID == ID) |> 
   ggplot(aes(x = YEAR, y = community_Fn)) + 
     geom_point(size = 4, shape = 21, fill = "purple1", color = "black") + 
     ggtitle("Nitrogen Excretion") + theme_classic() +
@@ -220,7 +222,7 @@ i = 321
           axis.text  = element_text(size = 16)) +
     scale_x_continuous(name = "", limits = c(1999, 2021), breaks = seq(2000, 2020, 5)) +
     scale_y_continuous(name = expression("N Excretion (gN"~m^-2~d^-1*")")))  +
-(Medit_Western_FunCatch_without_NA_community |> dplyr::filter(HEX_ID == ID) |> 
+(Medit_FunCatch_without_NA_community |> dplyr::filter(HEX_ID == ID) |> 
    ggplot(aes(x = YEAR, y = community_Fp)) + 
    geom_point(size = 4, shape = 21, fill = "green4", color = "black") + 
    ggtitle("Phosphorus Excretion") + theme_classic() +
@@ -231,7 +233,7 @@ i = 321
    scale_y_continuous(name = expression("P Excretion (gP"~m^-2~d^-1*")")))}
 
 # Spatial analysis Viz
-medits_coords <- Medit_Western_FunCatch_without_NA_community |>
+medits_coords <- Medit_FunCatch_without_NA_community |>
   mutate(Longitude = as.numeric(gsub(",", ".", MEAN_LONGITUDE_DEC)),
          Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |>
   select(YEAR, Longitude, Latitude, Biomass, top1_Biomass, community_Fn, community_Fp, community_Gc, Ic_plank, 
@@ -393,7 +395,7 @@ Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Pho
   
 #### Export the data  ----
 ## Data
-# save(Medit_Western_FunCatch_without_NA, file = "Outputs/dat_proc/Medit_Western_FunCatch_without_NA.RData")
+# save(Medit_FunCatch_without_NA, file = "Outputs/dat_proc/Medit_FunCatch_without_NA.RData")
 # save(medits_sf_percentile, file = "Outputs/dat_proc/medits_sf_percentile.Rdata")
   
 ## Figures

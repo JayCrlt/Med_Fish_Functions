@@ -8,12 +8,14 @@ library("rnaturalearth") ; library("rnaturalearthdata")
 ## Download data
 # Raw data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
-Medits_total       <- read.delim("Data/TATB_WMED_1999-2021_clean.csv", sep = ";")
+TATB_WMED          <- read.delim("Data/TATB_WMED_1999-2021_clean.csv", sep = ";")
+TATB_EMED          <- read.delim("Data/TATB_EMED_1999-2021_clean.csv", sep = ";")
+Medits_total       <- rbind(TATB_WMED, TATB_EMED)
 Nutrients_FishBase <- readxl::read_excel("Data/Nutrients_FishBase.xlsx") #87 values for C, 206 for N, 46 for P
 mdw_FishBase       <- readxl::read_excel("Data/mass_conversion_FishBase.xlsx") #87 values for C, 206 for N, 46 for P
 Metabolic_Rosen    <- read.delim("Data/Rosen_2025.csv", sep = ";")
 Metabolic_Nina     <- read.delim("Data/Schiettekatte_2021_Metabolism.csv", sep = ",")
-Hexagonal_grid     <- st_read("Data/Grid 0-1000m_WMED/Grid 0-1000m_WMED.shp")
+Hexagonal_grid     <- st_read("Data/Grid_0-1000m_Med.shp")
 
 # Nina data CNP diet
 cnp_diet           <- read.delim("Data/cnp_diet.csv", sep = ",") |> 
@@ -22,7 +24,7 @@ cnp_diet           <- read.delim("Data/cnp_diet.csv", sep = ",") |>
   left_join(rfishbase::ecology(), by = "SpecCode") 
 
 ## Functions
-source("Scripts/functions_script.R")
+source("Scripts/00_functions_script.R")
 
 #### 0. Exploration      ----
 # Merge Species_code with Scientific name
@@ -51,7 +53,7 @@ hex_grid                <- st_transform(Hexagonal_grid, crs = st_crs(medits_sf))
 Hexagonal_grid$ObsCount <- lengths(st_intersects(Hexagonal_grid, medits_sf))
 suppressWarnings({land  <- ne_countries(scale = "medium", returnclass = "sf") |> 
   st_crop(xmin = -6, xmax = 36, ymin = 30, ymax = 46)
-  hex_marine <- st_difference(Hexagonal_grid |> filter(ObsCount > 0), st_union(land))})
+hex_marine <- st_difference(Hexagonal_grid |> filter(ObsCount > 0), st_union(land))})
 Figure_1 <- leaflet() |> addProviderTiles(providers$Esri.WorldImagery) |>
   addPolygons(data = hex_marine,
               fillColor = ~colorNumeric(palette = "YlOrRd", domain = hex_marine$ObsCount)(ObsCount),
@@ -60,13 +62,13 @@ Figure_1 <- leaflet() |> addProviderTiles(providers$Esri.WorldImagery) |>
 
 # Catch surveys
 Catches_evolution <- map_dfr(1:49, ~ sample_once(Medits_total, 5000) |> mutate(iteration = .x)) |> 
-    group_by(YEAR) |> summarise(mean_weight = mean(weight_std, na.rm = T), sd_weight = sd(weight_std, na.rm = T)) |> 
-    ggplot(aes(x = YEAR, y = mean_weight)) +
-    geom_linerange(aes(ymin = mean_weight - sd_weight, ymax = mean_weight + sd_weight)) + 
-    geom_line(linetype = "dotted") + geom_point(shape = 21, fill = "white", size = 3) + 
-    theme_classic() + labs(y = expression(atop(paste("Standardized hauling activity (kg.km"^-1, ".h"^-1, ") ± SD"),
-                                               "(5000 obs.yr"^-1*" and 50 iterations)")), x = "") +
-    theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
+  group_by(YEAR) |> summarise(mean_weight = mean(weight_std, na.rm = T), sd_weight = sd(weight_std, na.rm = T)) |> 
+  ggplot(aes(x = YEAR, y = mean_weight)) +
+  geom_linerange(aes(ymin = mean_weight - sd_weight, ymax = mean_weight + sd_weight)) + 
+  geom_line(linetype = "dotted") + geom_point(shape = 21, fill = "white", size = 3) + 
+  theme_classic() + labs(y = expression(atop(paste("Standardized hauling activity (kg.km"^-1, ".h"^-1, ") ± SD"),
+                                             "(5000 obs.yr"^-1*" and 50 iterations)")), x = "") +
+  theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
 #### 1. CNP Body mass    ----
 # Distinct species in Nutrients database
@@ -117,7 +119,8 @@ data_summary <- cnp_diet |> group_by(Species) |> summarise(across(where(is.numer
   filter(!is.na(FoodTroph), !is.na(c))
 model_C      <- lm(c ~ I(FoodTroph - 1) + 0, data = data_summary)
 data_summary <- data_summary |> mutate(Fitted = predict(model_C),
-    Above = ifelse(c > Fitted, "above", "below"), Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
+                                       Above = ifelse(c > Fitted, "above", "below"), 
+                                       Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
 r2           <- summary(model_C)$r.squared
 r2_label     <- paste0("italic(R)^2 == ", format(round(r2, 2), nsmall = 2))
 C_diet <- ggplot(data_summary, aes(x = FoodTroph, y = c)) +
@@ -135,7 +138,8 @@ C_diet <- ggplot(data_summary, aes(x = FoodTroph, y = c)) +
 
 model_N      <- lm(n ~ I(FoodTroph - 1) + 0, data = data_summary)
 data_summary <- data_summary |> mutate(Fitted = predict(model_N),
-    Above = ifelse(n > Fitted, "above", "below"), Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
+                                       Above = ifelse(n > Fitted, "above", "below"), 
+                                       Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
 r2           <- summary(model_N)$r.squared
 r2_label     <- paste0("italic(R)^2 == ", format(round(r2, 2), nsmall = 2))
 N_diet <- ggplot(data_summary, aes(x = FoodTroph, y = n)) +
@@ -153,7 +157,8 @@ N_diet <- ggplot(data_summary, aes(x = FoodTroph, y = n)) +
 
 model_P      <- lm(p ~ I(FoodTroph - 1) + 0, data = data_summary)
 data_summary <- data_summary |> mutate(Fitted = predict(model_P),
-    Above = ifelse(p > Fitted, "above", "below"), Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
+                                       Above = ifelse(p > Fitted, "above", "below"), 
+                                       Color = ifelse(Above == "above", "dodgerblue2", "coral2"))
 r2           <- summary(model_P)$r.squared
 r2_label     <- paste0("italic(R)^2 == ", format(round(r2, 2), nsmall = 2))
 P_diet <- ggplot(data_summary, aes(x = FoodTroph, y = p)) +
@@ -206,7 +211,8 @@ phy <- fishtree_phylogeny(species = mdw_FishBase$Species)
 phy$tip.label <- gsub(" ", "_", phy$tip.label)
 mdw_FishBase_imputed <- mdw_FishBase |> impute_trait_phylopars(trait_col = "mdw", phy = phy) |> 
   group_by(Species) |> summarise(Genus = first(Genus[!is.na(Genus) & Genus != ""]),
-    Family = first(Family[!is.na(Family) & Family != ""]), mdw = first(mdw), mdw_type = first(mdw_type)) |> 
+                                 Family = first(Family[!is.na(Family) & Family != ""]), 
+                                 mdw = first(mdw), mdw_type = first(mdw_type)) |> 
   mutate(Species = gsub("_", " ", Species)) |> ungroup() |> 
   dplyr::select(Species, mdw)
 
@@ -214,7 +220,7 @@ mdw_FishBase_imputed <- mdw_FishBase |> impute_trait_phylopars(trait_col = "mdw"
 lw_growth <- rfishbase::length_weight() |> group_by(SpecCode) |>
   summarise(lwa = mean(a, na.rm = T), lwb = mean(b, na.rm = T)) |>
   left_join(rfishbase::popgrowth() |> group_by(SpecCode) |>
-    summarise(linf = mean(Loo, na.rm = T), K = mean(K, na.rm = T), t0 = mean(to, na.rm = T)), by = "SpecCode") |>
+              summarise(linf = mean(Loo, na.rm = T), K = mean(K, na.rm = T), t0 = mean(to, na.rm = T)), by = "SpecCode") |>
   left_join(rfishbase::load_taxa() |> select(SpecCode, Species),  by = "SpecCode") |> select(Species, everything()) |>
   mutate(t0 = ifelse(is.nan(t0), NA, t0)) |> dplyr::select(-SpecCode)
 
@@ -286,8 +292,9 @@ Metabolic_summary = Metabolic |>
 
 # Perform relationship for SMR
 SMR_Weight_relationship <- brm(log_SMR_gC_day ~ log_weight, data = Metabolic,
-  family = gaussian(), prior = c(prior(normal(0, 5), class = "Intercept"), prior(normal(0.75, 0.5), class = "b")),
-  chains = 4, cores = 4, iter = 4000, seed = 123)
+                               family = gaussian(), prior = c(prior(normal(0, 5), class = "Intercept"), 
+                                                              prior(normal(0.75, 0.5), class = "b")),
+                               chains = 4, cores = 4, iter = 4000, seed = 123)
 Metabolic_model_data          <- model.frame(SMR_Weight_relationship)
 Metabolic_model_data$SMR_pred <- exp(fitted(SMR_Weight_relationship, scale = "linear")[, "Estimate"])
 Metabolic_model_data$SMR_obs  <- exp(Metabolic_model_data$log_SMR_gC_day)
@@ -327,8 +334,9 @@ Figure_S3_A <- Metabolic_model_data |>
 
 # Perform relationship for MMR
 MMR_Weight_relationship <- brm(log_MMR_gC_day ~ log_weight, data = Metabolic,
-  family = gaussian(), prior = c(prior(normal(0, 5), class = "Intercept"), prior(normal(0.75, 0.5), class = "b")),
-  chains = 4, cores = 4, iter = 4000, seed = 123)
+                               family = gaussian(), prior = c(prior(normal(0, 5), class = "Intercept"), 
+                                                              prior(normal(0.75, 0.5), class = "b")),
+                               chains = 4, cores = 4, iter = 4000, seed = 123)
 Metabolic_model_data          <- model.frame(MMR_Weight_relationship)
 Metabolic_model_data$MMR_pred <- exp(fitted(MMR_Weight_relationship, scale = "linear")[, "Estimate"])
 Metabolic_model_data$MMR_obs  <- exp(Metabolic_model_data$log_MMR_gC_day)
@@ -367,8 +375,8 @@ Figure_S3_B <- Metabolic_model_data |>
   theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
 (Figure_S3 = Figure_S3_A + Figure_S3_B + plot_annotation(tag_levels = 'A') & 
-  theme(plot.tag = element_text(size = 16, face = "bold"),
-        axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
+    theme(plot.tag = element_text(size = 16, face = "bold"),
+          axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
 
 #### 7. Compilation  ----
 # Needed for the last phylogenetic imputation with body composition
@@ -377,44 +385,46 @@ phy_lw              <- fishtree_phylogeny(species = sp.)
 phy_lw$tip.label    <- gsub(" ", "_", phy_lw$tip.label)
 
 ###### 7.1 Clean Species info  ----
-Western_Med <- B_Useful_species_list |>
+All_Med <- B_Useful_species_list |>
   distinct(Species, Genus, `C/DM`, `N/DM`, `P/DM`) |>
   mutate(Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus),
-    Species = case_when(
-      Species == "Trigloporus lastoviza" ~ "Chelidonichthys lastoviza",
-      Species == "Pteromylaeus bovinus"  ~ "Aetomylaeus bovinus",
-      Species == "Liza ramada"           ~ "Chelon ramada",
-      Species == "Liza aurata"           ~ "Chelon auratus",
-      Species == "Liza saliens"          ~ "Chelon saliens",
-      TRUE ~ Species)) |>
+         Species = case_when(
+           Species == "Trigloporus lastoviza" ~ "Chelidonichthys lastoviza",
+           Species == "Pteromylaeus bovinus"  ~ "Aetomylaeus bovinus",
+           Species == "Liza ramada"           ~ "Chelon ramada",
+           Species == "Liza aurata"           ~ "Chelon auratus",
+           Species == "Liza saliens"          ~ "Chelon saliens",
+           TRUE ~ Species)) |>
   left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |>
   relocate(Family, .after = Genus) |>
   mutate(Genus = ifelse((is.na(Genus) & is.na(Family)) | Genus == "", word(Species, 1), Genus),
-    Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
+         Genus = ifelse(grepl("spp\\.", Species), word(Species, 1), Genus)) |>
   left_join(load_taxa() |> select(Genus, Family) |> distinct(), by = "Genus") |>
   relocate(Family.y, .after = Genus) |> select(-Family.x) |> rename(Family = Family.y) |>
-  mutate(Family = case_when(Species == "Myctophidae" ~ "Myctophidae", Species == "Blenniidae"  ~ "Blenniidae",
-                            TRUE ~ Family), Genus = case_when(Species %in% c("Myctophidae", "Blenniidae") ~ 
-                                                                NA_character_, TRUE ~ Genus)) |> 
-  rename(Qc = `C/DM`, Qn = `N/DM`, Qp = `P/DM`) |> mutate(Dataset = "B_Useful_MED_W") |> 
-
-###### 7.2 Add CNP body composition ----
-  bind_rows(nutrients_imputed |> select(Species, Family, CDM, NDM, PDM) |> 
-                                   rename(Qc = CDM, Qn = NDM, Qp = PDM) |> mutate(Dataset = "Schiettekatte_2021") |> 
-                                   left_join(load_taxa() |> select(Species, Genus) |> distinct(), by = "Species") |> 
-                                   relocate(Genus, .before = Family)) |> filter(!is.na(Species)) |> 
+  mutate(Family = case_when(Species == "Myctophidae" ~ "Myctophidae", 
+                            Species == "Blenniidae"  ~ "Blenniidae", 
+                            Species == "Triglidae"   ~ "Triglidae",
+                            Species == "Labridae"    ~ "Labridae",TRUE ~ Family), 
+         Genus = case_when(Species %in% c("Myctophidae","Blenniidae","Triglidae","Labridae") ~ NA_character_, T ~ Genus)) |> 
+  rename(Qc = `C/DM`, Qn = `N/DM`, Qp = `P/DM`) |> mutate(Dataset = "B_Useful_MED") |> 
+  
+  ###### 7.2 Add CNP body composition ----
+bind_rows(nutrients_imputed |> select(Species, Family, CDM, NDM, PDM) |> 
+            rename(Qc = CDM, Qn = NDM, Qp = PDM) |> mutate(Dataset = "Schiettekatte_2021") |> 
+            left_join(load_taxa() |> select(Species, Genus) |> distinct(), by = "Species") |> 
+            relocate(Genus, .before = Family)) |> filter(!is.na(Species)) |> 
   mutate(Species = gsub(" ", "_", Species)) |> 
   impute_trait_phylopars(trait_col = "Qc", phy = phy_lw) |>
   impute_trait_phylopars(trait_col = "Qn", phy = phy_lw) |>
   impute_trait_phylopars(trait_col = "Qp", phy = phy_lw) |> 
   select(-c(Qc_type, Qn_type, Qp_type)) |> relocate(Dataset, .after = Qp) |> group_by(Species) |>
-  slice_max(order_by = (Dataset == "B_Useful_MED_W"), with_ties = FALSE) |> ungroup() |> 
+  slice_max(order_by = (Dataset == "B_Useful_MED"), with_ties = FALSE) |> ungroup() |> 
   fill_trait_hierarchy("Qc") |> 
   fill_trait_hierarchy("Qn") |> 
   fill_trait_hierarchy("Qp") |> 
-
-###### 7.3 Add CNP diet             ----
-  mutate(Species = gsub("_", " ", Species)) |> 
+  
+  ###### 7.3 Add CNP diet             ----
+mutate(Species = gsub("_", " ", Species)) |> 
   left_join(rfishbase::load_taxa(), by = "Species") |> 
   left_join(rfishbase::ecology(), by = "SpecCode", relationship = "many-to-many") |> 
   select(c(1:7,51)) |> mutate(Species = gsub(" ", "_", Species)) |> 
@@ -425,17 +435,17 @@ Western_Med <- B_Useful_species_list |>
          Dn = predict(model_N, newdata = pick(everything())),
          Dp = predict(model_P, newdata = pick(everything()))) |> 
   relocate(c(FoodTroph, Dataset), .after = Dp) |> mutate(Qc = Qc * 100, Qn = Qn * 100, Qp = Qp * 100) |> 
-  dplyr::filter(Dataset == "B_Useful_MED_W") |> rename(h = FoodTroph) |> 
-
-###### 7.4 Add constantes           ----
-  mutate(ac = 0.8, an = 0.8, ap = 0.7, F0Nz = 3.7e-03, F0Pz = 3.7e-04) |> 
+  dplyr::filter(Dataset == "B_Useful_MED") |> rename(h = FoodTroph) |> 
+  
+  ###### 7.4 Add constantes           ----
+mutate(ac = 0.8, an = 0.8, ap = 0.7, F0Nz = 3.7e-03, F0Pz = 3.7e-04) |> 
   relocate(Dataset, .after = F0Pz) |> 
   left_join(mdw_FishBase_imputed |> mutate(Species = gsub(" ", "_", Species))) |> 
   fill_trait_hierarchy("mdw") |> 
   relocate(Dataset, .after = mdw) |> 
-
-###### 7.5 Add growth parameters    ----
-  mutate(lwa = NA, lwb = NA, linf = NA, K = NA, t = NA) |> 
+  
+  ###### 7.5 Add growth parameters    ----
+mutate(lwa = NA, lwb = NA, linf = NA, K = NA, t = NA) |> 
   full_join(lw_growth |> dplyr::select(Species, lwa, lwb,linf, K, t) |> 
               mutate(Dataset = "FishBase") |> rename(t0 = t) |> 
               relocate(Dataset, .after = t0)) |> 
@@ -443,9 +453,9 @@ Western_Med <- B_Useful_species_list |>
   summarise(across(everything(), ~ first(na.omit(.x))), .groups = "drop")  |> 
   fill_trait_hierarchy("lwa") |> fill_trait_hierarchy("lwb") |> fill_trait_hierarchy("linf") |> 
   fill_trait_hierarchy("K") |> fill_trait_hierarchy("t0") |> 
-
-###### 7.6 Add Caudal fin          ----
-  mutate(r = NA) |> 
+  
+  ###### 7.6 Add Caudal fin          ----
+mutate(r = NA) |> 
   full_join(Caudal_fin_FB |> dplyr::select(Species, AspectRatio) |> 
               rename(r = AspectRatio) |> 
               mutate(Dataset = "FishBase") |> 
@@ -453,27 +463,27 @@ Western_Med <- B_Useful_species_list |>
   relocate(Dataset, .after = r) |> group_by(Species) |> 
   summarise(across(everything(), ~ first(na.omit(.x))), .groups = "drop")  |> 
   fill_trait_hierarchy("r") |> 
-
-###### 7.6 Add Metabolism data     ----
+  
+  ###### 7.6 Add Metabolism data     ----
 # Workflow: get SMR and MMR thanks to relationships obtained in section 6.0. 
 # Then, use: f0 = SMR_gC_day / Weight^alpha * exp(E * (1 / (Temp_ref + 273.15) - 1 / (Temp_ref + 273.15)) / 8.617e-5))
 # And theta  = (SMR_gC_day + MMR_gC_day) / (2 * SMR_gC_day)
-  mutate(alpha  = round(fixef(SMR_Weight_relationship)["log_weight", "Estimate"], 3)) |> 
-  dplyr::filter(Dataset == "B_Useful_MED_W") |> 
+mutate(alpha  = round(fixef(SMR_Weight_relationship)["log_weight", "Estimate"], 3)) |> 
+  dplyr::filter(Dataset == "B_Useful_MED") |> 
   relocate(Dataset, .after = alpha) |> select(-t) |> 
-
-##### 7.7 Format data to match obs ----
-  mutate(Species = case_when(
-         Species == "Chelidonichthys lastoviza" ~ "Trigloporus lastoviza",
-         Species == "Aetomylaeus bovinus"       ~ "Pteromylaeus bovinus",
-         Species == "Chelon ramada"             ~ "Liza ramada",
-         Species == "Chelon auratus"            ~ "Liza aurata",
-         Species == "Chelon saliens"            ~ "Liza saliens",
-         TRUE ~ Species))
+  
+  ##### 7.7 Format data to match obs ----
+mutate(Species = case_when(
+  Species == "Chelidonichthys lastoviza" ~ "Trigloporus lastoviza",
+  Species == "Aetomylaeus bovinus"       ~ "Pteromylaeus bovinus",
+  Species == "Chelon ramada"             ~ "Liza ramada",
+  Species == "Chelon auratus"            ~ "Liza aurata",
+  Species == "Chelon saliens"            ~ "Liza saliens",
+  TRUE ~ Species))
 
 #### 8. Export the data  ----
 ## Data
-save(Western_Med, file = "Outputs/dat_proc/Western_Med.RData")
+save(All_Med, file = "Outputs/dat_proc/All_Med.RData")
 
 ## Figures
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
