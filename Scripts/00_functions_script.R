@@ -71,10 +71,10 @@ impute_temp <- function(hex_id, date, month) {
 
 # Percentile
 percentile_class <- function(x) {
-  q <- quantile(x, probs = c(0.01, 0.05, 0.95, 0.99), na.rm = TRUE)
+  q <- quantile(x, probs = c(0.01, 0.99, 0.05, 0.95), na.rm = TRUE)
   case_when(
     x <= q[1] ~ "tail_1%",
-    x <= q[2] ~ "tail_5%",
-    x >= q[3] ~ "top_5%",
-    x >= q[4] ~ "top_1%",
+    x >= q[2] ~ "top_1%",
+    x <= q[3] ~ "tail_5%",
+    x >= q[4] ~ "top_5%",
     TRUE ~ "mid")}
