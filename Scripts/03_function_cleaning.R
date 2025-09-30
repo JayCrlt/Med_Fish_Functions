@@ -252,17 +252,17 @@ land <- ne_countries(scale = "medium", returnclass = "sf")
 
 medits_sf_percentile = medits_sf_percentile |> 
   mutate(Biomass_class = recode(medits_sf_percentile$Biomass_class, 
-  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"),
   community_Gc_class   = recode(medits_sf_percentile$community_Gc_class, 
-  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"),
   community_Fn_class   = recode(medits_sf_percentile$community_Fn_class, 
-  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"),
   community_Fp_class   = recode(medits_sf_percentile$community_Fp_class, 
-  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"),
   community_Icp_class   = recode(medits_sf_percentile$community_Icp_class, 
-  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"),
+  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"),
   community_Icb_class   = recode(medits_sf_percentile$community_Icb_class, 
-  "top_5%" = "mid", "bottom_5%" = "mid", "top_1%" = "High", "mid" = "Intermediate", "bottom_1%" = "Low"))
+  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"))
 
 # Plots
 Spatial_Biomass <- ggplot() +
@@ -393,11 +393,50 @@ Spatial_Benthivory <- ggplot() +
 Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Phosphorus +
   Spatial_Planktivory + Spatial_Benthivory + 
   plot_layout(guides = "collect", ncol = 2) & theme(legend.position = "none")
-  
+
+### Add Multifunction index from Schiettekatte et al., 2021
+medits_sf_percentile <- medits_sf_percentile |>
+  mutate(across(all_of(c("community_Fn", "community_Fp", "community_Gc", "Ic_plank", "Ic_benthivorous")), 
+                ~ (.x - min(.x, na.rm = TRUE)) / 
+                  (max(.x, na.rm = TRUE) - min(.x, na.rm = TRUE)),
+                .names = "{.col}_norm")) |> rowwise() |>
+  mutate(Multifunctionality = mean(c_across(ends_with("_norm")), na.rm = TRUE)) |> ungroup() |> 
+  mutate(Multifunctionality_class = percentile_class(Multifunctionality),
+         Multifunctionality_class = recode(Multifunctionality_class, 
+                                           "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"))
+
+Spatial_Multi <- ggplot() +
+  geom_sf(data = subset(medits_sf_percentile, Multifunctionality_class == "Intermediate"),
+          aes(fill = Multifunctionality_class, color = Multifunctionality_class, size = Multifunctionality_class, shape = Multifunctionality_class)) +
+  geom_sf(data = subset(medits_sf_percentile, Multifunctionality_class %in% c("High", "Low")),
+          aes(fill = Multifunctionality_class, color = Multifunctionality_class, size = Multifunctionality_class, shape = Multifunctionality_class)) +
+  scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
+  scale_fill_manual(values = c("High" = "#CAE9F5", "Intermediate" = "grey", "Low" = "black")) +
+  scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
+  scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
+  geom_sf(data = land, fill = "lightgray", color = "black") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle("Fish Multifunctionality") +
+  labs(fill = "Fish multifunctionality Level", color = "Fish multifunctionality Level", size = "Fish multifunctionality Level", 
+       shape = "Fish multifunctionality Level") +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20, hjust = 0),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 14),
+        legend.text     = element_text(size = 12),
+        legend.position = "bottom")
+
+Figure_1_tot = ((Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + 
+                  Spatial_Phosphorus + Spatial_Planktivory + Spatial_Benthivory) + 
+  plot_layout(ncol = 2, guides = "collect")) / plot_spacer() / Spatial_Multi + 
+  plot_layout(heights = c(3, 0, 1.68)) & theme(legend.position = "none")
+
 #### Export the data  ----
 ## Data
 # save(Medit_FunCatch_without_NA, file = "Outputs/dat_proc/Medit_FunCatch_without_NA.RData")
 # save(medits_sf_percentile, file = "Outputs/dat_proc/medits_sf_percentile.Rdata")
   
 ## Figures
-ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 12,  height = 16, dpi = 300)  
+ggsave(Figure_1, filename = "Figure_1a.png", path = "Outputs/", device = "png", width = 12,  height = 16, dpi = 300)  
+ggsave(Figure_1_tot, filename = "Figure_1b.png", path = "Outputs/", device = "png", width = 12,  height = 14, dpi = 300)  
