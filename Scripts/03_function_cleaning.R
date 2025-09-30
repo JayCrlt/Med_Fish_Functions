@@ -160,7 +160,7 @@ for(i in 1: length(Medit_FunCatch$HEX_ID)){
 Medit_FunCatch_without_NA = Medit_FunCatch |> 
   anti_join(Medit_FunCatch |> group_by(HEX_ID, HAUL_NUMBER, YEAR, MONTH, HAULING_TIME) |> 
               summarise(NaN_count = sum(is.nan(TEMP)), Total_count = n(), .groups = "drop") |> 
-              filter(NaN_count > 0) |> select(HEX_ID, YEAR), by = c("HEX_ID", "YEAR")) # Remove 257315 - 257243 = -72 obs (< -0.03%) 
+              filter(NaN_count > 0) |> select(HEX_ID, YEAR), by = c("HEX_ID", "YEAR")) # Remove 501533 - 501403 = -130 obs (< -0.001%) 
 
 # Here added guilds
 Medit_FunCatch_without_NA <- Medit_FunCatch_without_NA |> full_join(Guilds)
@@ -235,10 +235,11 @@ i = 321
 # Spatial analysis Viz
 medits_coords <- Medit_FunCatch_without_NA_community |>
   mutate(Longitude = as.numeric(gsub(",", ".", MEAN_LONGITUDE_DEC)),
-         Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |>
+         Latitude  = as.numeric(gsub(",", ".", MEAN_LATITUDE_DEC))) |> drop_na(HEX_ID) |>
   select(YEAR, Longitude, Latitude, Biomass, top1_Biomass, community_Fn, community_Fp, community_Gc, Ic_plank, 
          Ic_benthivorous, top1_community_Fn, top1_community_Fp, top1_community_Gc, top1_community_Ic_plank,
          top1_community_Ic_benthivorous)
+
 medits_sf <- st_as_sf(medits_coords, coords = c("Longitude", "Latitude"), crs = 4326)
 medits_sf_percentile = medits_sf |> mutate(
     Biomass_class       = percentile_class(Biomass),
@@ -274,7 +275,7 @@ Spatial_Biomass <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Biomass") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Biomass") +
   labs(fill  = "Fish Biomass Level", color = "Fish Biomass Level", size  = "Fish Biomass Level", shape = "Fish Biomass Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
@@ -294,7 +295,7 @@ Spatial_Production <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Production") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Production") +
   labs(fill = "Fish Production Level", color = "Fish Production Level", size = "Fish Production Level", 
        shape = "Fish Production Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
@@ -315,7 +316,7 @@ Spatial_Nitrogen <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Nitrogen Fish Excretion") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Nitrogen Fish Excretion") +
   labs(fill = "Nitrogen Fish Excretion Level", color = "Nitrogen Fish Excretion Level", size = "Nitrogen Fish Excretion Level", 
        shape = "Nitrogen Fish Excretion Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
@@ -336,7 +337,7 @@ Spatial_Phosphorus <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Phosphorus Fish Excretion") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Phosphorus Fish Excretion") +
   labs(fill = "Phosphorus Fish Excretion Level", color = "Phosphorus Fish Excretion Level", size = "Phosphorus Fish Excretion Level", 
        shape = "Phosphorus Fish Excretion Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
@@ -357,7 +358,7 @@ Spatial_Planktivory <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Planktivory") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Planktivory") +
   labs(fill = "Fish planktivory Level", color = "Fish planktivory Level", size = "Fish planktivory Level", 
        shape = "Fish planktivory Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
@@ -378,7 +379,7 @@ Spatial_Benthivory <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() +   coord_sf(xlim = c(-6, 16), ylim = c(35, 45)) + ggtitle("Fish Benthivory") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Benthivory") +
   labs(fill = "Fish benthivory Level", color = "Fish benthivory Level", size = "Fish benthivory Level", 
        shape = "Fish benthivory Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
