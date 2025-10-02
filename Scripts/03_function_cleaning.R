@@ -572,6 +572,5 @@ Figure_2_tot = ((Figure_2A + Figure_2B + Figure_2C + Figure_2D + Figure_2E + Fig
 # save(medits_sf_percentile, file = "Outputs/dat_proc/medits_sf_percentile.Rdata")
   
 ## Figures
-ggsave(Figure_1, filename = "Figure_1a.png", path = "Outputs/", device = "png", width = 12,  height = 16, dpi = 300)  
-ggsave(Figure_1_tot, filename = "Figure_1b.png", path = "Outputs/", device = "png", width = 12,  height = 14, dpi = 300)  
+ggsave(Figure_1_tot, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 12,  height = 14, dpi = 300)  
 ggsave(Figure_2_tot, filename = "Figure_2.png", path = "Outputs/", device = "png", width = 10,  height = 12, dpi = 300)  
