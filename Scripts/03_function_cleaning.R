@@ -3,7 +3,7 @@ rm(list = ls()) ; options(warn = -1)
 library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales")
 library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("brms") ; library("sf")
 library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("leaflet.extras")
-library("rnaturalearth") ; library("rnaturalearthdata")
+library("rnaturalearth") ; library("rnaturalearthdata") ; library("rphylopic")
 
 ## Download data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
@@ -438,7 +438,7 @@ Figure_1_tot = ((Spatial_Biomass + Spatial_Production + Spatial_Nitrogen +
 ## Let's delineate function distributions
 Figure_2A <- ggplot(medits_sf_percentile, aes(x = Biomass)) +
   geom_histogram(binwidth = 0.2, fill = "#FF968A", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Fish biomass ("*g~m^{-2}~d^{-1}*")"),
+  theme_minimal() + labs(x = expression("Biomass ("*g~m^{-2}~d^{-1}*")"),
                          y = "Nb of Obs.") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Biomass), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$Biomass), 0.99), y = 0),
@@ -455,12 +455,14 @@ Figure_2A <- ggplot(medits_sf_percentile, aes(x = Biomass)) +
 
 Figure_2B <- ggplot(medits_sf_percentile, aes(x = community_Fn)) +
   geom_histogram(binwidth = 0.2, fill = "#A3B79C", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Nitrogen Fish excretion ("*gN~m^{-2}~d^{-1}*")"), y = "") +
+  theme_minimal() + labs(x = expression("Nitrogen excretion ("*gN~m^{-2}~d^{-1}*")"), y = "") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Fn), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$community_Fn), 0.99), y = 0),
                  inherit.aes = F, size = 2, color = "#d9ead3") +
   geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Fn))), y = 0,
-             inherit.aes = F, size = 5, fill = "#A3B79C", color = "#d9ead3", shape = 21) +
+             inherit.aes = F, size = 5, fill = "#A3B79C", color = "#d9ead3", shape = 21) + 
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  add_phylopic(name = "Mola mola", x = 1e-02, y = 3000, height = 1500)+
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
@@ -471,13 +473,15 @@ Figure_2B <- ggplot(medits_sf_percentile, aes(x = community_Fn)) +
 
 Figure_2C <- ggplot(medits_sf_percentile, aes(x = community_Fp)) +
   geom_histogram(binwidth = 0.2, fill = "#FFF1BA", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Phosphorus Fish excretion ("*gP~m^{-2}~d^{-1}*")"),
+  theme_minimal() + labs(x = expression("Phosphorus excretion ("*gP~m^{-2}~d^{-1}*")"),
                          y = "Nb of Obs.") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Fp), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$community_Fp), 0.99), y = 0),
                  inherit.aes = F, size = 2, color = "#fff2cc") +
   geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Fp))), y = 0,
-             inherit.aes = F, size = 5, fill = "#FFF1BA", color = "#fff2cc", shape = 21) +
+             inherit.aes = F, size = 5, fill = "#FFF1BA", color = "#fff2cc", shape = 21) +  
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  add_phylopic(name = "Citharoides macrolepis", x = 2.5e-03, y = 3000, height = 1000) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
@@ -488,12 +492,14 @@ Figure_2C <- ggplot(medits_sf_percentile, aes(x = community_Fp)) +
 
 Figure_2D <- ggplot(medits_sf_percentile, aes(x = community_Gc)) +
   geom_histogram(binwidth = 0.2, fill = "#B4CBF0", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Fish production ("*gC~m^{-2}~d^{-1}*")"), y = "") +
+  theme_minimal() + labs(x = expression("production ("*gC~m^{-2}~d^{-1}*")"), y = "") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Gc), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$community_Gc), 0.99), y = 0),
                  inherit.aes = F, size = 2, color = "#cfe2f3") +
   geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Gc))), y = 0,
-             inherit.aes = F, size = 5, fill = "#B4CBF0", color = "#cfe2f3", shape = 21) +
+             inherit.aes = F, size = 5, fill = "#B4CBF0", color = "#cfe2f3", shape = 21) +  
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  add_phylopic(name = "Archosargus rhomboidalis", x = 2e-02, y = 3000, height = 1100) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
@@ -504,13 +510,15 @@ Figure_2D <- ggplot(medits_sf_percentile, aes(x = community_Gc)) +
 
 Figure_2E <- ggplot(medits_sf_percentile, aes(x = Ic_plank)) +
   geom_histogram(binwidth = 0.2, fill = "#CCA9DD", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Fish Planktivory ("*gC~m^{-2}~d^{-1}*")"),
+  theme_minimal() + labs(x = expression("Planktivory ("*gC~m^{-2}~d^{-1}*")"),
                          y = "Nb of Obs.") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Ic_plank), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$Ic_plank), 0.99), y = 0),
                  inherit.aes = F, size = 2, color = "#d9d2e9") +
   geom_point(aes(x = median(na.omit(medits_sf_percentile$Ic_plank))), y = 0,
-             inherit.aes = F, size = 5, fill = "#CCA9DD", color = "#d9d2e9", shape = 21) +
+             inherit.aes = F, size = 5, fill = "#CCA9DD", color = "#d9d2e9", shape = 21) +  
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  add_phylopic(name = "Syngnathus typhle", x = 5e-02, y = 3000, height = 600) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
@@ -521,12 +529,14 @@ Figure_2E <- ggplot(medits_sf_percentile, aes(x = Ic_plank)) +
 
 Figure_2F <- ggplot(medits_sf_percentile, aes(x = Ic_benthivorous)) +
   geom_histogram(binwidth = 0.2, fill = "#FAC898", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Fish Benthivory ("*gC~m^{-2}~d^{-1}*")"), y = "") +
+  theme_minimal() + labs(x = expression("Benthivory ("*gC~m^{-2}~d^{-1}*")"), y = "") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Ic_benthivorous), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$Ic_benthivorous), 0.99), y = 0),
                  inherit.aes = F, size = 2, color = "#fff2cc") +
   geom_point(aes(x = median(na.omit(medits_sf_percentile$Ic_benthivorous))), y = 0,
              inherit.aes = F, size = 5, fill = "#FAC898", color = "#fff2cc", shape = 21) +
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  add_phylopic(name = "Raja asterias", x = 9e-02, y = 3000, height = 1300) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
