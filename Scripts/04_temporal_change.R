@@ -18,8 +18,6 @@ load("Outputs/dat_proc/Medit_FunCatch_without_NA.RData")
 
 ## Color palette and map
 land       <- ne_countries(scale = "medium", returnclass = "sf")
-my_palette <- c("#a50026","#d73027","#f46d43","#fdae61","#fee090","#ffffff",
-                "#e0f3f8","#abd9e9","#74add1","#4575b4","#313695")
 
 ## Functions
 source("Scripts/00_functions_script.R")

@@ -492,7 +492,7 @@ Figure_2C <- ggplot(medits_sf_percentile, aes(x = community_Fp)) +
 
 Figure_2D <- ggplot(medits_sf_percentile, aes(x = community_Gc)) +
   geom_histogram(binwidth = 0.2, fill = "#B4CBF0", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("production ("*gC~m^{-2}~d^{-1}*")"), y = "") +
+  theme_minimal() + labs(x = expression("Production ("*gC~m^{-2}~d^{-1}*")"), y = "") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Gc), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$community_Gc), 0.99), y = 0),
                  inherit.aes = F, size = 2, color = "#cfe2f3") +
