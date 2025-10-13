@@ -8,7 +8,8 @@ library("rnaturalearth") ; library("rnaturalearthdata") ; library("broom")
 ## Download data
 sp_code_list       <- read.delim("Data/MEDITS_spp.codes.csv", sep = ";")
 Hexagonal_grid     <- st_read("Data/Grid_0-1000m_Med.shp")
-Guilds             <- readxl::read_xlsx("Data/Guilds_MED.xlsx") |> mutate(SPECIES = str_replace_all(SPECIES, "\u00A0", " "))
+Guilds             <- readxl::read_xlsx("Data/Guilds_MED.xlsx") |> 
+  mutate(SPECIES = str_replace_all(SPECIES, "\u00A0", " "))
 
 ## Charge from previous scripts
 load("Outputs/dat_proc/Med_all.RData")
@@ -78,7 +79,8 @@ pb <- txtProgressBar(min = 0, max = length(Med_all_th$Species), style = 3)
 for(i in 1: length(Med_all_th$Species)){
   tryCatch({
     invisible(capture.output({
-      model[[i]] <- extract(cnp_model_mcmc(TL = Med_all_th$TL[i], param = param_dataset[[i]]), c("Fn","Fp", "Gc", "Ic"))}))
+      model[[i]] <- extract(cnp_model_mcmc(TL = Med_all_th$TL[i], 
+                                           param = param_dataset[[i]]), c("Fn","Fp", "Gc", "Ic"))}))
     Med_all_th$Fn_mean[i] <- model[[i]]$Fn_mean
     Med_all_th$Fn_Q1[i]   <- model[[i]]$`Fn_2.5%`
     Med_all_th$Fn_Q3[i]   <- model[[i]]$`Fn_97.5%`
@@ -257,4 +259,6 @@ Figure_2E = Family_rates |>
 Figure_2_tot = (Figure_2A + Figure_2B + Figure_2C + Figure_2D + Figure_2E) +
                   plot_layout(ncol = 3)
 
-ggsave(Figure_2_tot, filename = "Figure_2_sp.png", path = "Outputs/", device = "png", width = 10,  height = 8, dpi = 300)  
+#### Export the data  ----
+## Figures
+ggsave(Figure_2_tot, filename = "Figure_2.png", path = "Outputs/", device = "png", width = 10,  height = 8, dpi = 300)  
