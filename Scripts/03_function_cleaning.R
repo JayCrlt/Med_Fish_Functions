@@ -266,26 +266,50 @@ medits_sf_percentile = medits_sf_percentile |>
   "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"))
 
 # Plots
+### Some context looking at Biiomass first
 Spatial_Biomass <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, Biomass_class == "Intermediate"),
           aes(fill = Biomass_class, color = Biomass_class, size = Biomass_class, shape = Biomass_class)) +
   geom_sf(data = subset(medits_sf_percentile, Biomass_class %in% c("High", "Low")),
           aes(fill = Biomass_class, color = Biomass_class, size = Biomass_class, shape = Biomass_class)) +
   scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
-  scale_fill_manual(values = c("High" = "#FF968A", "Intermediate" = "grey", "Low" = "black")) +
+  scale_fill_manual(values = c("High" = "#CAE9F5", "Intermediate" = "grey", "Low" = "black")) +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Biomass") +
-  labs(fill  = "Fish Biomass Level", color = "Fish Biomass Level", size  = "Fish Biomass Level", shape = "Fish Biomass Level") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Biomass ("*g~m^{-2}~d^{-1}*")")) +
+  labs(fill  = "Fish Biomass Level", color = "Fish Biomass Level", size  = 
+         "Fish Biomass Level", shape = "Fish Biomass Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "bottom")
+
+Figure_1A <- ggplot(medits_sf_percentile, aes(x = Biomass)) +
+  geom_histogram(binwidth = 0.2, fill = "#CAE9F5", color = "black") + scale_x_log10() + 
+  theme_void() + labs(x = "", y = "") +
+  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Biomass), 0.01),
+                     xmax = quantile(na.omit(medits_sf_percentile$Biomass), 0.99), y = 0),
+                 inherit.aes = F, size = 2, color = "#cfe2f3") +
+  geom_point(aes(x = median(na.omit(medits_sf_percentile$Biomass))), y = 0,
+             inherit.aes = F, size = 5, fill = "#CAE9F5", color = "#cfe2f3", shape = 21) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
+        plot.title      = element_text(size = 20),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
 
+Figure_1 <- Spatial_Biomass + 
+  annotation_custom(grob = ggplotGrob(Figure_1A), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
+
+### Look at the other functions
+# Fish production
 Spatial_Production <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, community_Gc_class == "Intermediate"),
           aes(fill = community_Gc_class, color = community_Gc_class, size = community_Gc_class, shape = community_Gc_class)) +
@@ -296,17 +320,39 @@ Spatial_Production <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Production") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Production ("*gC~m^{-2}~d^{-1}*")")) +
   labs(fill = "Fish Production Level", color = "Fish Production Level", size = "Fish Production Level", 
        shape = "Fish Production Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
+
+Figure_3A <- ggplot(medits_sf_percentile, aes(x = community_Gc)) +
+  geom_histogram(binwidth = 0.2, fill = "#B4CBF0", color = "black") + scale_x_log10() + 
+  theme_void() + labs(x = "", y = "") +
+  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Gc), 0.01),
+                     xmax = quantile(na.omit(medits_sf_percentile$community_Gc), 0.99), y = 0),
+                 inherit.aes = F, size = 2, color = "#cfe2f3") +
+  geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Gc))), y = 0,
+             inherit.aes = F, size = 5, fill = "#B4CBF0", color = "#cfe2f3", shape = 21) +  
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
+        plot.title      = element_text(size = 20),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.position = "none")
 
+Figure_3A <- Spatial_Production + 
+  annotation_custom(grob = ggplotGrob(Figure_3A), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
+
+# Fish Nitrogen
 Spatial_Nitrogen <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, community_Fn_class == "Intermediate"),
           aes(fill = community_Fn_class, color = community_Fn_class, size = community_Fn_class, shape = community_Fn_class)) +
@@ -317,38 +363,82 @@ Spatial_Nitrogen <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Nitrogen Fish Excretion") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Nitrogen excretion ("*gN~m^{-2}~d^{-1}*")")) +
   labs(fill = "Nitrogen Fish Excretion Level", color = "Nitrogen Fish Excretion Level", size = "Nitrogen Fish Excretion Level", 
        shape = "Nitrogen Fish Excretion Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
+
+Figure_3B <- ggplot(medits_sf_percentile, aes(x = community_Fn)) +
+  geom_histogram(binwidth = 0.2, fill = "#A3B79C", color = "black") + scale_x_log10() + 
+  theme_void() + labs(x = "", y = "") +
+  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Fn), 0.01),
+                     xmax = quantile(na.omit(medits_sf_percentile$community_Fn), 0.99), y = 0),
+                 inherit.aes = F, size = 2, color = "#d9ead3") +
+  geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Fn))), y = 0,
+             inherit.aes = F, size = 5, fill = "#A3B79C", color = "#d9ead3", shape = 21) + 
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
+        plot.title      = element_text(size = 20),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.position = "none")
 
+Figure_3B <- Spatial_Nitrogen + 
+  annotation_custom(grob = ggplotGrob(Figure_3B), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
+
+# Fish Phosphorus
 Spatial_Phosphorus <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, community_Fp_class == "Intermediate"),
           aes(fill = community_Fp_class, color = community_Fp_class, size = community_Fp_class, shape = community_Fp_class)) +
   geom_sf(data = subset(medits_sf_percentile, community_Fp_class %in% c("High", "Low")),
           aes(fill = community_Fp_class, color = community_Fp_class, size = community_Fp_class, shape = community_Fp_class)) +
   scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
-  scale_fill_manual(values = c("High" = "#FFF1BA", "Intermediate" = "grey", "Low" = "black")) +
+  scale_fill_manual(values = c("High" = "#F2DE93", "Intermediate" = "grey", "Low" = "black")) +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Phosphorus Fish Excretion") +
-  labs(fill = "Phosphorus Fish Excretion Level", color = "Phosphorus Fish Excretion Level", size = "Phosphorus Fish Excretion Level", 
-       shape = "Phosphorus Fish Excretion Level") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Phosphorus excretion ("*gP~m^{-2}~d^{-1}*")")) +
+  labs(fill = "Phosphorus Fish Excretion Level", color = "Phosphorus Fish Excretion Level", 
+       size = "Phosphorus Fish Excretion Level", shape = "Phosphorus Fish Excretion Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
+
+Figure_3C <- ggplot(medits_sf_percentile, aes(x = community_Fp)) +
+  geom_histogram(binwidth = 0.2, fill = "#F2DE93", color = "black") + scale_x_log10() + 
+  theme_void() + labs(x = "", y = "") +
+  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Fp), 0.01),
+                     xmax = quantile(na.omit(medits_sf_percentile$community_Fp), 0.99), y = 0),
+                 inherit.aes = F, size = 2, color = "#fff2cc") +
+  geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Fp))), y = 0,
+             inherit.aes = F, size = 5, fill = "#F2DE93", color = "#fff2cc", shape = 21) +  
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
+        plot.title      = element_text(size = 20),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-  
+        legend.position = "none")
+
+Figure_3C <- Spatial_Phosphorus + 
+  annotation_custom(grob = ggplotGrob(Figure_3C), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
+
+# Fish Planktivory
 Spatial_Planktivory <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, community_Icp_class == "Intermediate"),
           aes(fill = community_Icp_class, color = community_Icp_class, size = community_Icp_class, shape = community_Icp_class)) +
@@ -359,17 +449,39 @@ Spatial_Planktivory <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Planktivory") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Planktivory ("*gC~m^{-2}~d^{-1}*")")) +
   labs(fill = "Fish planktivory Level", color = "Fish planktivory Level", size = "Fish planktivory Level", 
        shape = "Fish planktivory Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
+
+Figure_3D <- ggplot(medits_sf_percentile, aes(x = Ic_plank)) +
+  geom_histogram(binwidth = 0.2, fill = "#CCA9DD", color = "black") + scale_x_log10() + 
+  theme_void() + labs(x = "", y = "") +
+  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Ic_plank), 0.01),
+                     xmax = quantile(na.omit(medits_sf_percentile$Ic_plank), 0.99), y = 0),
+                 inherit.aes = F, size = 2, color = "#d9d2e9") +
+  geom_point(aes(x = median(na.omit(medits_sf_percentile$Ic_plank))), y = 0,
+             inherit.aes = F, size = 5, fill = "#CCA9DD", color = "#d9d2e9", shape = 21) +  
+  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
+        plot.title      = element_text(size = 20),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.position = "none")
 
+Figure_3D <- Spatial_Planktivory + 
+  annotation_custom(grob = ggplotGrob(Figure_3D), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
+
+# Fish Benthivory
 Spatial_Benthivory <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, community_Icb_class == "Intermediate"),
           aes(fill = community_Icb_class, color = community_Icb_class, size = community_Icb_class, shape = community_Icb_class)) +
@@ -380,20 +492,36 @@ Spatial_Benthivory <- ggplot() +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + ggtitle("Fish Benthivory") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Benthivory ("*gC~m^{-2}~d^{-1}*")")) +
   labs(fill = "Fish benthivory Level", color = "Fish benthivory Level", size = "Fish benthivory Level", 
        shape = "Fish benthivory Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
+
+Figure_3E <- ggplot(medits_sf_percentile, aes(x = Ic_benthivorous)) +
+  geom_histogram(binwidth = 0.2, fill = "#FAC898", color = "black") + scale_x_log10() + 
+  theme_void() + labs(x = "", y = "") +
+  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Ic_benthivorous), 0.01),
+                     xmax = quantile(na.omit(medits_sf_percentile$Ic_benthivorous), 0.99), y = 0),
+                 inherit.aes = F, size = 2, color = "#fff2cc") +
+  geom_point(aes(x = median(na.omit(medits_sf_percentile$Ic_benthivorous))), y = 0,
+             inherit.aes = F, size = 5, fill = "#FAC898", color = "#fff2cc", shape = 21) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
+        plot.title      = element_text(size = 20),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.position = "none")
 
-Figure_1 = Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + Spatial_Phosphorus +
-  Spatial_Planktivory + Spatial_Benthivory + 
-  plot_layout(guides = "collect", ncol = 2) & theme(legend.position = "none")
+Figure_3E <- Spatial_Benthivory + 
+  annotation_custom(grob = ggplotGrob(Figure_3E), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
 
 ### Add Multifunction index from Schiettekatte et al., 2021
 medits_sf_percentile <- medits_sf_percentile |>
@@ -404,7 +532,7 @@ medits_sf_percentile <- medits_sf_percentile |>
   mutate(Multifunctionality = mean(c_across(ends_with("_norm")), na.rm = TRUE)) |> ungroup() |> 
   mutate(Multifunctionality_class = percentile_class(Multifunctionality),
          Multifunctionality_class = recode(Multifunctionality_class, 
-  "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"))
+                                           "top_5%" = "Intermediate", "tail_5%" = "Intermediate", "mid" = "Intermediate", "top_1%" = "High", "tail_1%" = "Low"))
 
 Spatial_Multi <- ggplot() +
   geom_sf(data = subset(medits_sf_percentile, Multifunctionality_class == "Intermediate"),
@@ -414,157 +542,44 @@ Spatial_Multi <- ggplot() +
           aes(fill = Multifunctionality_class, color = Multifunctionality_class, size = Multifunctionality_class, 
               shape = Multifunctionality_class)) +
   scale_shape_manual(values = c("High" = 21, "Intermediate" = 21, "Low" = 20)) +
-  scale_fill_manual(values = c("High" = "#CAE9F5", "Intermediate" = "grey", "Low" = "black")) +
+  scale_fill_manual(values = c("High" = "#FF968A", "Intermediate" = "grey", "Low" = "black")) +
   scale_color_manual(values = c("High" = "black", "Intermediate" = "grey50", "Low" = "black")) +
   scale_size_manual(values = c("High" = 4, "Intermediate" = 3, "Low" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
   theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
-  ggtitle("Fish Multifunctionality") +
+  ggtitle("Multifunctional Index") +
   labs(fill = "Fish multifunctionality Level", color = "Fish multifunctionality Level", 
        size = "Fish multifunctionality Level", shape = "Fish multifunctionality Level") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20, hjust = 0),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-Figure_1_tot = ((Spatial_Biomass + Spatial_Production + Spatial_Nitrogen + 
-                  Spatial_Phosphorus + Spatial_Planktivory + Spatial_Benthivory) + 
-  plot_layout(ncol = 2, guides = "collect")) / plot_spacer() / Spatial_Multi + 
-  plot_layout(heights = c(3, 0, 1.68)) & theme(legend.position = "none")
-
-## Let's delineate function distributions
-Figure_2A <- ggplot(medits_sf_percentile, aes(x = Biomass)) +
+Figure_3F <- ggplot(medits_sf_percentile, aes(x = Multifunctionality)) +
   geom_histogram(binwidth = 0.2, fill = "#FF968A", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Biomass ("*g~m^{-2}~d^{-1}*")"),
-                         y = "Nb of Obs.") +
-  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Biomass), 0.01),
-                     xmax = quantile(na.omit(medits_sf_percentile$Biomass), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#f4cccc") +
-  geom_point(aes(x = median(na.omit(medits_sf_percentile$Biomass))), y = 0,
-             inherit.aes = F, size = 5, fill = "#FF968A", color = "#f4cccc", shape = 21) +
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
-        plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-
-Figure_2B <- ggplot(medits_sf_percentile, aes(x = community_Fn)) +
-  geom_histogram(binwidth = 0.2, fill = "#A3B79C", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Nitrogen excretion ("*gN~m^{-2}~d^{-1}*")"), y = "") +
-  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Fn), 0.01),
-                     xmax = quantile(na.omit(medits_sf_percentile$community_Fn), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#d9ead3") +
-  geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Fn))), y = 0,
-             inherit.aes = F, size = 5, fill = "#A3B79C", color = "#d9ead3", shape = 21) + 
-  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
-  add_phylopic(name = "Mola mola", x = 1e-02, y = 3000, height = 1500)+
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
-        plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-
-Figure_2C <- ggplot(medits_sf_percentile, aes(x = community_Fp)) +
-  geom_histogram(binwidth = 0.2, fill = "#FFF1BA", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Phosphorus excretion ("*gP~m^{-2}~d^{-1}*")"),
-                         y = "Nb of Obs.") +
-  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Fp), 0.01),
-                     xmax = quantile(na.omit(medits_sf_percentile$community_Fp), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#fff2cc") +
-  geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Fp))), y = 0,
-             inherit.aes = F, size = 5, fill = "#FFF1BA", color = "#fff2cc", shape = 21) +  
-  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
-  add_phylopic(name = "Citharoides macrolepis", x = 2.5e-03, y = 3000, height = 1000) +
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
-        plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-
-Figure_2D <- ggplot(medits_sf_percentile, aes(x = community_Gc)) +
-  geom_histogram(binwidth = 0.2, fill = "#B4CBF0", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Production ("*gC~m^{-2}~d^{-1}*")"), y = "") +
-  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$community_Gc), 0.01),
-                     xmax = quantile(na.omit(medits_sf_percentile$community_Gc), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#cfe2f3") +
-  geom_point(aes(x = median(na.omit(medits_sf_percentile$community_Gc))), y = 0,
-             inherit.aes = F, size = 5, fill = "#B4CBF0", color = "#cfe2f3", shape = 21) +  
-  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
-  add_phylopic(name = "Archosargus rhomboidalis", x = 2e-02, y = 3000, height = 1100) +
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
-        plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-
-Figure_2E <- ggplot(medits_sf_percentile, aes(x = Ic_plank)) +
-  geom_histogram(binwidth = 0.2, fill = "#CCA9DD", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Planktivory ("*gC~m^{-2}~d^{-1}*")"),
-                         y = "Nb of Obs.") +
-  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Ic_plank), 0.01),
-                     xmax = quantile(na.omit(medits_sf_percentile$Ic_plank), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#d9d2e9") +
-  geom_point(aes(x = median(na.omit(medits_sf_percentile$Ic_plank))), y = 0,
-             inherit.aes = F, size = 5, fill = "#CCA9DD", color = "#d9d2e9", shape = 21) +  
-  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
-  add_phylopic(name = "Syngnathus typhle", x = 5e-02, y = 3000, height = 600) +
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
-        plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-
-Figure_2F <- ggplot(medits_sf_percentile, aes(x = Ic_benthivorous)) +
-  geom_histogram(binwidth = 0.2, fill = "#FAC898", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Benthivory ("*gC~m^{-2}~d^{-1}*")"), y = "") +
-  geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Ic_benthivorous), 0.01),
-                     xmax = quantile(na.omit(medits_sf_percentile$Ic_benthivorous), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#fff2cc") +
-  geom_point(aes(x = median(na.omit(medits_sf_percentile$Ic_benthivorous))), y = 0,
-             inherit.aes = F, size = 5, fill = "#FAC898", color = "#fff2cc", shape = 21) +
-  scale_y_continuous(limits = c(0,3650), breaks = seq(0,3000,1000)) +
-  add_phylopic(name = "Raja asterias", x = 9e-02, y = 3000, height = 1300) +
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
-        plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
-
-Figure_2G <- ggplot(medits_sf_percentile, aes(x = Multifunctionality)) +
-  geom_histogram(binwidth = 0.2, fill = "#CAE9F5", color = "black") + scale_x_log10() + 
-  theme_minimal() + labs(x = expression("Multifunctionality"),
-                         y = "Nb of Obs.") +
+  theme_void() + labs(x = "", y = "") +
   geom_linerange(aes(xmin = quantile(na.omit(medits_sf_percentile$Multifunctionality), 0.01),
                      xmax = quantile(na.omit(medits_sf_percentile$Multifunctionality), 0.99), y = 0),
-                 inherit.aes = F, size = 2, color = "#cfe2f3") +
+                 inherit.aes = F, size = 2, color = "#f4cccc") +
   geom_point(aes(x = median(na.omit(medits_sf_percentile$Multifunctionality))), y = 0,
-             inherit.aes = F, size = 5, fill = "#CAE9F5", color = "#cfe2f3", shape = 21) +
-  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+             inherit.aes = F, size = 5, fill = "#FF968A", color = "#f4cccc", shape = 21) +
+  theme(axis.title      = element_blank(),
+        axis.text       = element_blank(),
+        axis.ticks      = element_blank(),
         plot.title      = element_text(size = 20),
-        axis.title      = element_text(size = 18),
-        axis.text       = element_text(size = 16),
         legend.title    = element_text(size = 14),
         legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.position = "none")
 
-Figure_2_tot = ((Figure_2A + Figure_2B + Figure_2C + Figure_2D + Figure_2E + Figure_2F) + 
-                  plot_layout(ncol = 2, guides = "collect")) / plot_spacer() / Figure_2G + 
-  plot_layout(heights = c(3, 0, 1.68)) & theme(legend.position = "none")
+Figure_3F <- Spatial_Multi + 
+  annotation_custom(grob = ggplotGrob(Figure_3F), xmin = 25, xmax = 36, ymin = 42, ymax = 46)
+
+# Altogether
+Figure_3 = Figure_3A + Figure_3B + Figure_3C + Figure_3D + Figure_3E + Figure_3F + 
+  plot_layout(guides = "collect", ncol = 2) 
 
 #### Export the data  ----
 ## Data
@@ -572,5 +587,5 @@ Figure_2_tot = ((Figure_2A + Figure_2B + Figure_2C + Figure_2D + Figure_2E + Fig
 # save(medits_sf_percentile, file = "Outputs/dat_proc/medits_sf_percentile.Rdata")
   
 ## Figures
-ggsave(Figure_1_tot, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 12,  height = 14, dpi = 300)  
-ggsave(Figure_2_tot, filename = "Figure_2.png", path = "Outputs/", device = "png", width = 10,  height = 12, dpi = 300)  
+ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 8,  height = 4, dpi = 300)  
+ggsave(Figure_3, filename = "Figure_3.png", path = "Outputs/", device = "png", width = 12,  height = 9, dpi = 300)  

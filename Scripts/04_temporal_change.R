@@ -97,7 +97,7 @@ Slopes <- Slopes |> mutate(
     IcP_trend_class = factor(IcP_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")),
     IcB_trend_class = factor(IcB_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")))
 
-Figure_3A <- ggplot(Slopes) + geom_sf(aes(fill = Gc_trend_class), color = "black", shape = 21, size = 4) +
+Figure_4A <- ggplot(Slopes) + geom_sf(aes(fill = Gc_trend_class), color = "black", shape = 21, size = 4) +
   scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
                                "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
   geom_sf(data = land, fill = "lightgray", color = "black") +
@@ -111,7 +111,7 @@ Figure_3A <- ggplot(Slopes) + geom_sf(aes(fill = Gc_trend_class), color = "black
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
 
-Figure_3B <- ggplot(Slopes) + geom_sf(aes(fill = Fn_trend_class), color = "black", shape = 21, size = 4) +
+Figure_4B <- ggplot(Slopes) + geom_sf(aes(fill = Fn_trend_class), color = "black", shape = 21, size = 4) +
   scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
                                "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
   geom_sf(data = land, fill = "lightgray", color = "black") +
@@ -125,7 +125,7 @@ Figure_3B <- ggplot(Slopes) + geom_sf(aes(fill = Fn_trend_class), color = "black
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
 
-Figure_3C <- ggplot(Slopes) + geom_sf(aes(fill = Fp_trend_class), color = "black", shape = 21, size = 4) +
+Figure_4C <- ggplot(Slopes) + geom_sf(aes(fill = Fp_trend_class), color = "black", shape = 21, size = 4) +
   scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
                                "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
   geom_sf(data = land, fill = "lightgray", color = "black") +
@@ -139,7 +139,7 @@ Figure_3C <- ggplot(Slopes) + geom_sf(aes(fill = Fp_trend_class), color = "black
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
 
-Figure_3D <- ggplot(Slopes) + geom_sf(aes(fill = IcP_trend_class), color = "black", shape = 21, size = 4) +
+Figure_4D <- ggplot(Slopes) + geom_sf(aes(fill = IcP_trend_class), color = "black", shape = 21, size = 4) +
   scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
                                "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
   geom_sf(data = land, fill = "lightgray", color = "black") +
@@ -153,7 +153,7 @@ Figure_3D <- ggplot(Slopes) + geom_sf(aes(fill = IcP_trend_class), color = "blac
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
 
-Figure_3E <- ggplot(Slopes) + geom_sf(aes(fill = IcB_trend_class), color = "black", shape = 21, size = 4) +
+Figure_4E <- ggplot(Slopes) + geom_sf(aes(fill = IcB_trend_class), color = "black", shape = 21, size = 4) +
   scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
                                "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
   geom_sf(data = land, fill = "lightgray", color = "black") +
@@ -204,24 +204,22 @@ IcB_doughnut <- doughnut_data |> filter(Variable == "Ic_benthivorous_slope") |>
   theme_void() + theme(legend.position = "none", strip.text = element_text(size = 12))
 
 # Add pie plot insets
-Figure_3A_inset <- Figure_3A +
+Figure_4A_inset <- Figure_4A +
   annotation_custom(grob = ggplotGrob(Gc_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_3B_inset <- Figure_3B+
+Figure_4B_inset <- Figure_4B+
   annotation_custom(grob = ggplotGrob(Fn_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_3C_inset <- Figure_3C +
+Figure_4C_inset <- Figure_4C +
   annotation_custom(grob = ggplotGrob(Fp_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_3D_inset <- Figure_3D +
+Figure_4D_inset <- Figure_4D +
   annotation_custom(grob = ggplotGrob(IcP_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_3E_inset <- Figure_3E +
+Figure_4E_inset <- Figure_4E +
   annotation_custom(grob = ggplotGrob(IcB_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
 
 # Final Figure
-Figure_3_tot = Figure_3A_inset / Figure_3B_inset / Figure_3C_inset / 
-  Figure_3D_inset / Figure_3E_inset + plot_layout(guides = "collect") & 
-  theme(legend.position = "bottom",
-        legend.title    = element_text(size = 18),
-        legend.text     = element_text(size = 16))
+Figure_4_tot <- Figure_4A_inset / Figure_4B_inset / Figure_4C_inset / Figure_4D_inset / Figure_4E_inset +
+  plot_layout(guides = "collect") + plot_annotation(theme = theme(legend.position = "bottom",
+      legend.title = element_text(size = 18), legend.text = element_text(size = 16)))
 
 #### Export the data  ----
 ## Figures
-ggsave(Figure_3_tot, filename = "Figure_3.png", path = "Outputs/", device = "png", width = 6,  height = 14, dpi = 300)  
+ggsave(Figure_4_tot, filename = "Figure_4.png", path = "Outputs/", device = "png", width = 6,  height = 14, dpi = 300)  
