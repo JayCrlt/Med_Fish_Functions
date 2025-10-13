@@ -261,4 +261,4 @@ Figure_2_tot = (Figure_2A + Figure_2B + Figure_2C + Figure_2D + Figure_2E) +
 
 #### Export the data  ----
 ## Figures
-ggsave(Figure_2_tot, filename = "Figure_2.png", path = "Outputs/", device = "png", width = 10,  height = 8, dpi = 300)  
+ggsave(Figure_2_tot, filename = "Figure_2.png", path = "Outputs/Raw/", device = "png", width=10,  height=8, dpi=300)  
