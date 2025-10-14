@@ -146,7 +146,7 @@ Figure_4C1 <- ggplot() +
                                "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
   theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
-  ggtitle(expression("Phosporus excretion")) +
+  ggtitle(expression("Phosphorus excretion")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
@@ -218,7 +218,7 @@ Figure_4F1 <- ggplot() +
                                "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
   theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
-  ggtitle(expression("Multifunctionality")) +
+  ggtitle(expression("Multifunctional Index")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),

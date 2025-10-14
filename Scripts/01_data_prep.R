@@ -111,9 +111,6 @@ P_body = nutrients_imputed |>
   theme(axis.title = element_text(size = 14),
         axis.text  = element_text(size = 12))
 
-Figure_S1 = C_body / N_body / P_body + plot_annotation(tag_levels = 'A') & 
-  theme(plot.tag = element_text(size = 16, face = "bold"))
-
 #### 2. CNP diets        ----
 data_summary <- cnp_diet |> group_by(Species) |> summarise(across(where(is.numeric), \(x) mean(x, na.rm = TRUE))) |> 
   filter(!is.na(FoodTroph), !is.na(c))
@@ -174,7 +171,7 @@ P_diet <- ggplot(data_summary, aes(x = FoodTroph, y = p)) +
   theme(axis.title = element_text(size = 14),
         axis.text  = element_text(size = 12))
 
-Figure_S2 = C_diet + N_diet + P_diet + plot_annotation(tag_levels = 'A') & 
+Figure_S1 = C_diet + N_diet + P_diet + plot_annotation(tag_levels = 'A') & 
   theme(plot.tag = element_text(size = 16, face = "bold"))
 
 # Add estimates
@@ -313,7 +310,7 @@ label_data_SMR <- data.frame(
   eq_label = as.character(deparse(eq_label)),
   r2_label = as.character(deparse(r2_label)))
 
-Figure_S3_A <- Metabolic_model_data |>
+Figure_S2_A <- Metabolic_model_data |>
   mutate(Above = ifelse(SMR_obs > SMR_pred, "above", "below"),
          Color = ifelse(Above == "above", "dodgerblue2", "coral2")) |> 
   ggplot(aes(x = Weight, y = SMR_obs)) +
@@ -355,7 +352,7 @@ label_data_MMR <- data.frame(
   eq_label = as.character(deparse(eq_label)),
   r2_label = as.character(deparse(r2_label)))
 
-Figure_S3_B <- Metabolic_model_data |>
+Figure_S2_B <- Metabolic_model_data |>
   mutate(Above = ifelse(MMR_obs > MMR_pred, "above", "below"),
          Color = ifelse(Above == "above", "dodgerblue2", "coral2")) |> 
   ggplot(aes(x = Weight, y = MMR_obs)) +
@@ -374,7 +371,7 @@ Figure_S3_B <- Metabolic_model_data |>
             hjust = 0, vjust = 1.5, size = 5, parse = TRUE) +
   theme(axis.title = element_text(size = 16), axis.text  = element_text(size = 14))
 
-(Figure_S3 = Figure_S3_A + Figure_S3_B + plot_annotation(tag_levels = 'A') & 
+(Figure_S2 = Figure_S2_A + Figure_S2_B + plot_annotation(tag_levels = 'A') & 
     theme(plot.tag = element_text(size = 16, face = "bold"),
           axis.title = element_text(size = 16), axis.text  = element_text(size = 14)))
 
@@ -486,6 +483,5 @@ mutate(Species = case_when(
 save(All_Med, file = "Outputs/dat_proc/All_Med.RData")
 
 ## Figures
-ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 4,  height = 7.5, dpi = 300)  
-ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
-ggsave(Figure_S3, filename = "Figure_S3.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
+ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
+ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
