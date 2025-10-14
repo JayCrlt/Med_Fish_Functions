@@ -44,182 +44,243 @@ medits_with_hexID <- st_join(medits_sf_percentile, st_transform(Hexagonal_grid, 
 medits_with_hexID_over_10years <- medits_with_hexID |> 
   filter(HEX_ID %in% (medits_with_hexID |> group_by(HEX_ID) |> summarise(n_years = n_distinct(YEAR)) |> 
                         filter(n_years >= 10) |> st_drop_geometry() |> ungroup() |> select(HEX_ID) |> 
-                        pull(HEX_ID))) |> group_by(HEX_ID) 
+                        pull(HEX_ID))) |> group_by(HEX_ID) |> 
+  dplyr::select(c(1:3, 5:9, 15, 22:27, 29:32))
 
 ## Analyze slopes over year
 Slopes <- st_as_sf(medits_with_hexID_over_10years |>
-  pivot_longer(cols = c(community_Gc, community_Fn, community_Fp, Ic_plank, Ic_benthivorous),
+  pivot_longer(cols = c(community_Gc, community_Fn, community_Fp, Ic_plank, Ic_benthivorous, Multifunctionality),
     names_to = "metric", values_to = "value") |> group_by(HEX_ID, metric) |> do(tidy(lm(value ~ YEAR, data = .))) |>
-  filter(term == "YEAR") |> select(HEX_ID, metric, slope = estimate) |>
-  pivot_wider(names_from = metric, values_from = slope, names_glue = "{metric}_slope") |>
+  filter(term == "YEAR") |> select(HEX_ID, metric, slope = estimate, p.value = p.value) |>
+  pivot_wider(names_from = metric, values_from = c(slope, p.value), names_glue = "{metric}_{.value}") |>
   left_join(medits_with_hexID_over_10years |> st_drop_geometry() |> group_by(HEX_ID) |>
       summarise(centroid_lon = mean((left + right) / 2, na.rm = TRUE),
                 centroid_lat = mean((top + bottom) / 2, na.rm = TRUE)) |>
-      st_as_sf(coords = c("centroid_lon", "centroid_lat"), crs = st_crs(medits_with_hexID_over_10years)))) 
+      st_as_sf(coords = c("centroid_lon", "centroid_lat"), crs = st_crs(medits_with_hexID_over_10years))))  |> 
+  mutate(Fn_trend_class  = case_when(community_Fn_slope       < 0 & community_Fn_p.value       <= 0.05 ~ "1. significantly negative",
+                                     community_Fn_slope       < 0 & community_Fn_p.value       >  0.05 ~ "2. negative trend",
+                                     community_Fn_slope       > 0 & community_Fn_p.value       >  0.05 ~ "3. positive trend",
+                                     community_Fn_slope       > 0 & community_Fn_p.value       <= 0.05 ~ "4. significantly positive"),
+         Fp_trend_class  = case_when(community_Fp_slope       < 0 & community_Fp_p.value       <= 0.05 ~ "1. significantly negative",
+                                     community_Fp_slope       < 0 & community_Fp_p.value       >  0.05 ~ "2. negative trend",
+                                     community_Fp_slope       > 0 & community_Fp_p.value       >  0.05 ~ "3. positive trend",
+                                     community_Fp_slope       > 0 & community_Fp_p.value       <= 0.05 ~ "4. significantly positive"),
+         Gc_trend_class  = case_when(community_Gc_slope       < 0 & community_Gc_p.value       <= 0.05 ~ "1. significantly negative",
+                                     community_Gc_slope       < 0 & community_Gc_p.value       >  0.05 ~ "2. negative trend",
+                                     community_Gc_slope       > 0 & community_Gc_p.value       >  0.05 ~ "3. positive trend",
+                                     community_Gc_slope       > 0 & community_Gc_p.value       <= 0.05 ~ "4. significantly positive"),
+         IcB_trend_class = case_when(Ic_benthivorous_slope    < 0 & Ic_benthivorous_p.value    <= 0.05 ~ "1. significantly negative",
+                                     Ic_benthivorous_slope    < 0 & Ic_benthivorous_p.value    >  0.05 ~ "2. negative trend",
+                                     Ic_benthivorous_slope    > 0 & Ic_benthivorous_p.value    >  0.05 ~ "3. positive trend",
+                                     Ic_benthivorous_slope    > 0 & Ic_benthivorous_p.value    <= 0.05 ~ "4. significantly positive"),
+         IcP_trend_class = case_when(Ic_plank_slope           < 0 & Ic_plank_p.value           <= 0.05 ~ "1. significantly negative",
+                                     Ic_plank_slope           < 0 & Ic_plank_p.value           >  0.05 ~ "2. negative trend",
+                                     Ic_plank_slope           > 0 & Ic_plank_p.value           >  0.05 ~ "3. positive trend",
+                                     Ic_plank_slope           > 0 & Ic_plank_p.value           <= 0.05 ~ "4. significantly positive"),
+         Mf_trend_class  = case_when(Multifunctionality_slope < 0 & Multifunctionality_p.value <= 0.05 ~ "1. significantly negative",
+                                     Multifunctionality_slope < 0 & Multifunctionality_p.value >  0.05 ~ "2. negative trend",
+                                     Multifunctionality_slope > 0 & Multifunctionality_p.value >  0.05 ~ "3. positive trend",
+                                     Multifunctionality_slope > 0 & Multifunctionality_p.value <= 0.05 ~ "4. significantly positive")) 
 
-## Define class
-# Carbon
-qs <- quantile(Slopes$community_Gc_slope, probs = c(0.01, 0.99), na.rm = TRUE) ; q1  <- qs[1]; q99 <- qs[2]
-Slopes <- Slopes |> mutate(Gc_trend_class = case_when(community_Gc_slope < q1  ~ "<1%",
-  community_Gc_slope >= q1 & community_Gc_slope <= q99 & community_Gc_slope < 0 ~ "Negative",
-  community_Gc_slope >= q1 & community_Gc_slope <= q99 & community_Gc_slope > 0 ~ "Positive",
-  community_Gc_slope > q99 ~ ">99%")) 
-# Nitrogen
-qs <- quantile(Slopes$community_Fn_slope, probs = c(0.01, 0.99), na.rm = TRUE) ; q1  <- qs[1]; q99 <- qs[2]
-Slopes <- Slopes |> mutate(Fn_trend_class = case_when(community_Fn_slope < q1  ~ "<1%",
-  community_Fn_slope >= q1 & community_Fn_slope <= q99 & community_Fn_slope < 0 ~ "Negative",
-  community_Fn_slope >= q1 & community_Fn_slope <= q99 & community_Fn_slope > 0 ~ "Positive",
-  community_Fn_slope > q99 ~ ">99%"))
-# Phosphorus
-qs <- quantile(Slopes$community_Fp_slope, probs = c(0.01, 0.99), na.rm = TRUE) ; q1  <- qs[1]; q99 <- qs[2]
-Slopes <- Slopes |> mutate(Fp_trend_class = case_when(community_Fp_slope < q1  ~ "<1%",
-  community_Fp_slope >= q1 & community_Fp_slope <= q99 & community_Fp_slope < 0 ~ "Negative",
-  community_Fp_slope >= q1 & community_Fp_slope <= q99 & community_Fp_slope > 0 ~ "Positive",
-  community_Fp_slope > q99 ~ ">99%"))
-# Planktivory
-qs <- quantile(Slopes$Ic_plank_slope, probs = c(0.01, 0.99), na.rm = TRUE) ; q1  <- qs[1]; q99 <- qs[2]
-Slopes <- Slopes |> mutate(IcP_trend_class = case_when(Ic_plank_slope < q1  ~ "<1%",
-  Ic_plank_slope >= q1 & Ic_plank_slope <= q99 & Ic_plank_slope < 0 ~ "Negative",
-  Ic_plank_slope >= q1 & Ic_plank_slope <= q99 & Ic_plank_slope > 0 ~ "Positive",
-  Ic_plank_slope > q99 ~ ">99%"))
-# Benthivory
-qs <- quantile(Slopes$Ic_benthivorous_slope, probs = c(0.01, 0.99), na.rm = TRUE) ; q1  <- qs[1]; q99 <- qs[2]
-Slopes <- Slopes |> mutate(IcB_trend_class = case_when(Ic_benthivorous_slope < q1  ~ "<1%",
-  Ic_benthivorous_slope >= q1 & Ic_benthivorous_slope <= q99 & Ic_benthivorous_slope < 0 ~ "Negative",
-  Ic_benthivorous_slope >= q1 & Ic_benthivorous_slope <= q99 & Ic_benthivorous_slope > 0 ~ "Positive",
-  Ic_benthivorous_slope > q99 ~ ">99%"))
-
-# Reorder the slopes
-Slopes <- Slopes |> mutate(
-    Fn_trend_class = factor(Fn_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")),
-    Gc_trend_class = factor(Gc_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")),
-    Fp_trend_class = factor(Fp_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")),
-    IcP_trend_class = factor(IcP_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")),
-    IcB_trend_class = factor(IcB_trend_class, levels = c("<1%", "Negative", "Positive", ">99%")))
-
-Figure_4A <- ggplot(Slopes) + geom_sf(aes(fill = Gc_trend_class), color = "black", shape = 21, size = 4) +
-  scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
-                               "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
+## Plots
+Figure_4A1 <- ggplot() +
+  geom_sf(data = subset(Slopes, Gc_trend_class %in% c("2. negative trend", "3. positive trend")),
+          aes(fill = Gc_trend_class, color = Gc_trend_class, size = Gc_trend_class, shape = Gc_trend_class)) +
+  geom_sf(data = subset(Slopes, Gc_trend_class %in% c("1. significantly negative", "4. significantly positive")),
+          aes(fill = Gc_trend_class, color = Gc_trend_class, size = Gc_trend_class, shape = Gc_trend_class)) +
+  scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
+                                "2. negative trend" = 20, "3. positive trend" = 20)) +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "4. significantly positive" = "#9999FF", 
+                               "2. negative trend" = "#000000", "3. positive trend" = "#000000")) +
+  scale_color_manual(values = c("1. significantly negative" = "#000000", "4. significantly positive" = "#000000", 
+                                "2. negative trend" = "#FF9999", "3. positive trend" = "#CCCCFF")) +
+  scale_size_manual(values = c("1. significantly negative" = 4, "4. significantly positive" = 4, 
+                               "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) +
-  theme_minimal() + ggtitle("Fish Production") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Production")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-Figure_4B <- ggplot(Slopes) + geom_sf(aes(fill = Fn_trend_class), color = "black", shape = 21, size = 4) +
-  scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
-                               "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
+Figure_4B1 <- ggplot() +
+  geom_sf(data = subset(Slopes, Fn_trend_class %in% c("2. negative trend", "3. positive trend")),
+          aes(fill = Fn_trend_class, color = Fn_trend_class, size = Fn_trend_class, shape = Fn_trend_class)) +
+  geom_sf(data = subset(Slopes, Fn_trend_class %in% c("1. significantly negative", "4. significantly positive")),
+          aes(fill = Fn_trend_class, color = Fn_trend_class, size = Fn_trend_class, shape = Fn_trend_class)) +
+  scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
+                                "2. negative trend" = 20, "3. positive trend" = 20)) +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "4. significantly positive" = "#9999FF", 
+                               "2. negative trend" = "#000000", "3. positive trend" = "#000000")) +
+  scale_color_manual(values = c("1. significantly negative" = "#000000", "4. significantly positive" = "#000000", 
+                                "2. negative trend" = "#FF9999", "3. positive trend" = "#CCCCFF")) +
+  scale_size_manual(values = c("1. significantly negative" = 4, "4. significantly positive" = 4, 
+                               "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) +
-  theme_minimal() + ggtitle("Fish Nitrogen Excretion") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Nitrogen excretion")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-Figure_4C <- ggplot(Slopes) + geom_sf(aes(fill = Fp_trend_class), color = "black", shape = 21, size = 4) +
-  scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
-                               "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
+Figure_4C1 <- ggplot() +
+  geom_sf(data = subset(Slopes, Fp_trend_class %in% c("2. negative trend", "3. positive trend")),
+          aes(fill = Fp_trend_class, color = Fp_trend_class, size = Fp_trend_class, shape = Fp_trend_class)) +
+  geom_sf(data = subset(Slopes, Fp_trend_class %in% c("1. significantly negative", "4. significantly positive")),
+          aes(fill = Fp_trend_class, color = Fp_trend_class, size = Fp_trend_class, shape = Fp_trend_class)) +
+  scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
+                                "2. negative trend" = 20, "3. positive trend" = 20)) +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "4. significantly positive" = "#9999FF", 
+                               "2. negative trend" = "#000000", "3. positive trend" = "#000000")) +
+  scale_color_manual(values = c("1. significantly negative" = "#000000", "4. significantly positive" = "#000000", 
+                                "2. negative trend" = "#FF9999", "3. positive trend" = "#CCCCFF")) +
+  scale_size_manual(values = c("1. significantly negative" = 4, "4. significantly positive" = 4, 
+                               "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) +
-  theme_minimal() + ggtitle("Fish Phosphorus Excretion") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Phosporus excretion")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-Figure_4D <- ggplot(Slopes) + geom_sf(aes(fill = IcP_trend_class), color = "black", shape = 21, size = 4) +
-  scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
-                               "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
+Figure_4D1 <- ggplot() +
+  geom_sf(data = subset(Slopes, IcP_trend_class %in% c("2. negative trend", "3. positive trend")),
+          aes(fill = IcP_trend_class, color = IcP_trend_class, size = IcP_trend_class, shape = IcP_trend_class)) +
+  geom_sf(data = subset(Slopes, IcP_trend_class %in% c("1. significantly negative", "4. significantly positive")),
+          aes(fill = IcP_trend_class, color = IcP_trend_class, size = IcP_trend_class, shape = IcP_trend_class)) +
+  scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
+                                "2. negative trend" = 20, "3. positive trend" = 20)) +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "4. significantly positive" = "#9999FF", 
+                               "2. negative trend" = "#000000", "3. positive trend" = "#000000")) +
+  scale_color_manual(values = c("1. significantly negative" = "#000000", "4. significantly positive" = "#000000", 
+                                "2. negative trend" = "#FF9999", "3. positive trend" = "#CCCCFF")) +
+  scale_size_manual(values = c("1. significantly negative" = 4, "4. significantly positive" = 4, 
+                               "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) +
-  theme_minimal() + ggtitle("Fish Planktivory") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Planktivory")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-Figure_4E <- ggplot(Slopes) + geom_sf(aes(fill = IcB_trend_class), color = "black", shape = 21, size = 4) +
-  scale_fill_manual(values = c("<1%" = "#d73027", "Negative" = "#E88B95", 
-                               "Positive" = "#abd9e9", ">99%" = "#4169e1"), name = "") +
+Figure_4E1 <- ggplot() +
+  geom_sf(data = subset(Slopes, IcB_trend_class %in% c("2. negative trend", "3. positive trend")),
+          aes(fill = IcB_trend_class, color = IcB_trend_class, size = IcB_trend_class, shape = IcB_trend_class)) +
+  geom_sf(data = subset(Slopes, IcB_trend_class %in% c("1. significantly negative", "4. significantly positive")),
+          aes(fill = IcB_trend_class, color = IcB_trend_class, size = IcB_trend_class, shape = IcB_trend_class)) +
+  scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
+                                "2. negative trend" = 20, "3. positive trend" = 20)) +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "4. significantly positive" = "#9999FF", 
+                               "2. negative trend" = "#000000", "3. positive trend" = "#000000")) +
+  scale_color_manual(values = c("1. significantly negative" = "#000000", "4. significantly positive" = "#000000", 
+                                "2. negative trend" = "#FF9999", "3. positive trend" = "#CCCCFF")) +
+  scale_size_manual(values = c("1. significantly negative" = 4, "4. significantly positive" = 4, 
+                               "2. negative trend" = 2, "3. positive trend" = 2)) +
   geom_sf(data = land, fill = "lightgray", color = "black") +
-  coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) +
-  theme_minimal() + ggtitle("Fish Benthivory") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Benthivory")) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
         axis.text       = element_text(size = 16),
-        legend.title    = element_text(size = 14),
-        legend.text     = element_text(size = 12),
-        legend.position = "bottom")
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-# Classify slopes into Positive / Negative
-doughnut_data <- Slopes %>% st_drop_geometry() %>%
-  select(all_of(c("community_Gc_slope", "community_Fn_slope", "community_Fp_slope", 
-                          "Ic_plank_slope", "Ic_benthivorous_slope"))) %>%
-  pivot_longer(everything(), names_to = "Variable", values_to = "Slope") %>%
-  mutate(Sign = case_when(Slope > 0 ~ "Positive", Slope < 0 ~ "Negative", TRUE ~ "Zero")) %>%
-  filter(Sign != "Zero") %>% group_by(Variable, Sign) %>% summarise(Count = n(), .groups = "drop") %>%
-  group_by(Variable) %>% mutate(Fraction = Count / sum(Count))
+Figure_4F1 <- ggplot() +
+  geom_sf(data = subset(Slopes, Mf_trend_class %in% c("2. negative trend", "3. positive trend")),
+          aes(fill = Mf_trend_class, color = Mf_trend_class, size = Mf_trend_class, shape = Mf_trend_class)) +
+  geom_sf(data = subset(Slopes, Mf_trend_class %in% c("1. significantly negative", "4. significantly positive")),
+          aes(fill = Mf_trend_class, color = Mf_trend_class, size = Mf_trend_class, shape = Mf_trend_class)) +
+  scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
+                                "2. negative trend" = 20, "3. positive trend" = 20)) +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "4. significantly positive" = "#9999FF", 
+                               "2. negative trend" = "#000000", "3. positive trend" = "#000000")) +
+  scale_color_manual(values = c("1. significantly negative" = "#000000", "4. significantly positive" = "#000000", 
+                                "2. negative trend" = "#FF9999", "3. positive trend" = "#CCCCFF")) +
+  scale_size_manual(values = c("1. significantly negative" = 4, "4. significantly positive" = 4, 
+                               "2. negative trend" = 2, "3. positive trend" = 2)) +
+  geom_sf(data = land, fill = "lightgray", color = "black") +
+  theme_minimal() + coord_sf(xlim = c(-5, 35), ylim = c(34, 46)) + 
+  ggtitle(expression("Multifunctionality")) +
+  theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
+        plot.title      = element_text(size = 20),
+        axis.title      = element_text(size = 18),
+        axis.text       = element_text(size = 16),
+        legend.title    = element_text(size = 18),
+        legend.text     = element_text(size = 16),
+        legend.position = "none")
 
-# Doughnut plot
-Gc_doughnut <- doughnut_data |> filter(Variable == "community_Gc_slope") |> 
-  ggplot(aes(x = 2, y = Fraction, fill = Sign)) + ggtitle("") +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + 
-  scale_fill_manual(values = c("Positive" = "#abd9e9", "Negative" = "#E88B95")) +
-  theme_void() + theme(legend.position = "none", strip.text = element_text(size = 12))
-Fn_doughnut <- doughnut_data |> filter(Variable == "community_Fn_slope") |> 
-  ggplot(aes(x = 2, y = Fraction, fill = Sign)) + ggtitle("") +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + 
-  scale_fill_manual(values = c("Positive" = "#abd9e9", "Negative" = "#E88B95")) +
-  theme_void() + theme(legend.position = "none", strip.text = element_text(size = 12))
-Fp_doughnut <- doughnut_data |> filter(Variable == "community_Fp_slope") |> 
-  ggplot(aes(x = 2, y = Fraction, fill = Sign)) + ggtitle("") +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + 
-  scale_fill_manual(values = c("Positive" = "#abd9e9", "Negative" = "#E88B95")) +
-  theme_void() + theme(legend.position = "none", strip.text = element_text(size = 12))
-IcP_doughnut <- doughnut_data |> filter(Variable == "Ic_plank_slope") |> 
-  ggplot(aes(x = 2, y = Fraction, fill = Sign)) + ggtitle("") +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + 
-  scale_fill_manual(values = c("Positive" = "#abd9e9", "Negative" = "#E88B95")) +
-  theme_void() + theme(legend.position = "none", strip.text = element_text(size = 12))
-IcB_doughnut <- doughnut_data |> filter(Variable == "Ic_benthivorous_slope") |> 
-  ggplot(aes(x = 2, y = Fraction, fill = Sign)) + ggtitle("") +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + 
-  scale_fill_manual(values = c("Positive" = "#abd9e9", "Negative" = "#E88B95")) +
-  theme_void() + theme(legend.position = "none", strip.text = element_text(size = 12))
+Figure_4A2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Gc_trend_class) %>% summarise(n = n()) |> 
+  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
+  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+                               "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  theme(legend.position = "none")
 
-# Add pie plot insets
-Figure_4A_inset <- Figure_4A +
-  annotation_custom(grob = ggplotGrob(Gc_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_4B_inset <- Figure_4B+
-  annotation_custom(grob = ggplotGrob(Fn_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_4C_inset <- Figure_4C +
-  annotation_custom(grob = ggplotGrob(Fp_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_4D_inset <- Figure_4D +
-  annotation_custom(grob = ggplotGrob(IcP_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
-Figure_4E_inset <- Figure_4E +
-  annotation_custom(grob = ggplotGrob(IcB_doughnut), xmin = 26, xmax = 41, ymin = 42, ymax = 48)
+Figure_4B2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Fn_trend_class) %>% summarise(n = n()) |> 
+  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
+  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+                               "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  theme(legend.position = "none")
+
+Figure_4C2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Fp_trend_class) %>% summarise(n = n()) |> 
+  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
+  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+                               "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  theme(legend.position = "none")
+
+Figure_4D2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = IcP_trend_class) %>% summarise(n = n()) |> 
+  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
+  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+                               "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  theme(legend.position = "none")
+
+Figure_4E2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = IcB_trend_class) %>% summarise(n = n()) |> 
+  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
+  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+                               "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  theme(legend.position = "none")
+
+Figure_4F2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Mf_trend_class) %>% summarise(n = n()) |> 
+  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
+  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+                               "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  theme(legend.position = "none")
+
+  # Add pie plot insets
+Figure_4A <- Figure_4A1 + annotation_custom(grob = ggplotGrob(Figure_4A2), xmin = 25, xmax = 40, ymin = 40, ymax = 46)
+Figure_4B <- Figure_4B1 + annotation_custom(grob = ggplotGrob(Figure_4B2), xmin = 25, xmax = 40, ymin = 40, ymax = 46)
+Figure_4C <- Figure_4C1 + annotation_custom(grob = ggplotGrob(Figure_4C2), xmin = 25, xmax = 40, ymin = 40, ymax = 46)
+Figure_4D <- Figure_4D1 + annotation_custom(grob = ggplotGrob(Figure_4D2), xmin = 25, xmax = 40, ymin = 40, ymax = 46)
+Figure_4E <- Figure_4E1 + annotation_custom(grob = ggplotGrob(Figure_4E2), xmin = 25, xmax = 40, ymin = 40, ymax = 46)
+Figure_4F <- Figure_4F1 + annotation_custom(grob = ggplotGrob(Figure_4F2), xmin = 25, xmax = 40, ymin = 40, ymax = 46)
 
 # Final Figure
-Figure_4_tot <- Figure_4A_inset / Figure_4B_inset / Figure_4C_inset / Figure_4D_inset / Figure_4E_inset +
-  plot_layout(guides = "collect") + plot_annotation(theme = theme(legend.position = "bottom",
-      legend.title = element_text(size = 18), legend.text = element_text(size = 16)))
+Figure_4 = Figure_4A + Figure_4B + Figure_4C + Figure_4D + Figure_4E + Figure_4F + 
+  plot_layout(guides = "collect", ncol = 2) 
 
 #### Export the data  ----
 ## Figures
-ggsave(Figure_4_tot, filename = "Figure_4.png", path = "Outputs/", device = "png", width = 6,  height = 14, dpi = 300)  
+ggsave(Figure_4, filename = "Figure_4.png", path = "Outputs/", device = "png", width = 12,  height = 9, dpi = 300)  
