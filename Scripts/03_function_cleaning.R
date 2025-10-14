@@ -588,4 +588,4 @@ Figure_3 = Figure_3A + Figure_3B + Figure_3C + Figure_3D + Figure_3E + Figure_3F
   
 ## Figures
 ggsave(Figure_1, filename = "Figure_1.png", path = "Outputs/", device = "png", width = 8,  height = 4, dpi = 300)  
-ggsave(Figure_3, filename = "Figure_3.png", path = "Outputs/", device = "png", width = 12,  height = 9, dpi = 300)  
+ggsave(Figure_3, filename = "Figure_3.png", path = "Outputs/", device = "png", width = 12, height = 9, dpi = 300)  

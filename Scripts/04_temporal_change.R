@@ -283,4 +283,4 @@ Figure_4 = Figure_4A + Figure_4B + Figure_4C + Figure_4D + Figure_4E + Figure_4F
 
 #### Export the data  ----
 ## Figures
-ggsave(Figure_4, filename = "Figure_4.png", path = "Outputs/", device = "png", width = 12,  height = 9, dpi = 300)  
+ggsave(Figure_4, filename = "Figure_4.png", path = "Outputs/", device = "png", width = 12, height = 9, dpi = 300)  
