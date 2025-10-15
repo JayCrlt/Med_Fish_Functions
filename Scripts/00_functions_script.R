@@ -78,3 +78,7 @@ percentile_class <- function(x) {
     x <= q[3] ~ "tail_5%",
     x >= q[4] ~ "top_5%",
     TRUE ~ "mid")}
+
+
+# Not in
+`%notin%` = Negate(`%in%`)
