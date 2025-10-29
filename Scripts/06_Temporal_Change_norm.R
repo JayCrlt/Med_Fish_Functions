@@ -72,7 +72,7 @@ Hexagonal_grid_fish_surveys_max = Hexagonal_grid_fish_surveys |>
          interp_Mf_max = interp_MF$var1.pred) |> 
   rename(HEX_ID = id)
 
-### Keep the highest values for the 5 functions + multifunctional index rior to 2019
+### Keep the highest values for the 5 functions + multifunctional index prior to 2019
 medits_sf_percentile_hex_prev <- st_join(medits_sf_percentile, Hexagonal_grid |> dplyr::select(id, grid_id)) |> 
   mutate(HEX_ID = coalesce(id, grid_id)) |> dplyr::select(-c(id, grid_id)) |> dplyr::filter(YEAR %notin% c(2019:2021)) |> 
   st_drop_geometry() |> group_by(HEX_ID) |> summarise(max_Fn  = max(community_Fn, na.rm = TRUE), 

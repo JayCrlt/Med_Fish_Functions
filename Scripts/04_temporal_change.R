@@ -49,7 +49,7 @@ medits_with_hexID_over_10years <- medits_with_hexID |>
 
 ## Analyze slopes over year
 Slopes <- st_as_sf(medits_with_hexID_over_10years |>
-  pivot_longer(cols = c(community_Gc, community_Fn, community_Fp, Ic_plank, Ic_benthivorous, Multifunctionality),
+  pivot_longer(cols = c(Biomass, community_Gc, community_Fn, community_Fp, Ic_plank, Ic_benthivorous, Multifunctionality),
     names_to = "metric", values_to = "value") |> group_by(HEX_ID, metric) |> do(tidy(lm(value ~ YEAR, data = .))) |>
   filter(term == "YEAR") |> select(HEX_ID, metric, slope = estimate, p.value = p.value) |>
   pivot_wider(names_from = metric, values_from = c(slope, p.value), names_glue = "{metric}_{.value}") |>
@@ -282,5 +282,8 @@ Figure_4 = Figure_4A + Figure_4B + Figure_4C + Figure_4D + Figure_4E + Figure_4F
   plot_layout(guides = "collect", ncol = 2) 
 
 #### Export the data  ----
+## Data
+save(Slopes, file = "Outputs/dat_proc/Temp_change_slopes.RData")
+
 ## Figures
 ggsave(Figure_4, filename = "Figure_4.png", path = "Outputs/", device = "png", width = 12, height = 9, dpi = 300)  
