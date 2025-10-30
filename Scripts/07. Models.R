@@ -25,12 +25,14 @@ merged_sf <- st_join(Slopes, st_as_sf(Env_FI, coords = c("X", "Y"), crs = 4326),
   mutate(Mf_bin = ifelse(Multifunctionality_slope > 0, 1, 0), abs_botTemp_anom = abs(botTemp_anom),
          biom_bin = ifelse(Biomass_slope > 0, 1, 0))
 
+## General Model
 model = brms::brm(formula = Mf_bin ~ botTemp_anom + DEPTH + chl + FPI_combined + (1|GSA), 
                   data = merged_sf, cores = 3, chains = 3, iter = 10000,
                   family = bernoulli(link = "logit"))
 (post_summary <- as.data.frame(fixef(model)))
 bayes_R2(model)
 
+## Conditional effect Fishing Pressure
 ce_FPI <- conditional_effects(model, effects = "FPI_combined")
 ce_FPI$FPI_combined$gam_low = predict(mgcv::gam(lower__ ~ s(FPI_combined, k = 10), data = ce_FPI$FPI_combined, family = gaussian()), 
                                       newdata = ce_FPI$FPI_combined)
@@ -69,7 +71,8 @@ Figure_5A <- ggplot(ce_FPI$FPI_combined, aes(x = FPI_combined)) +
            legend.title    = element_text(size = 18),
            legend.text     = element_text(size = 16),
            legend.position = "none")  
-  
+
+## Conditional effect Climate Change
 ce_sbta <- conditional_effects(model, effects = "botTemp_anom") 
 ce_sbta$botTemp_anom$gam_low = predict(mgcv::gam(lower__ ~ s(botTemp_anom, k = 10), data = ce_sbta$botTemp_anom, family = gaussian()), 
                                       newdata = ce_sbta$botTemp_anom)
@@ -107,21 +110,22 @@ Figure_5B <- ggplot(ce_sbta$botTemp_anom, aes(x = botTemp_anom)) +
         legend.text     = element_text(size = 16),
         legend.position = "none")  
 
-ce_sbta <- conditional_effects(model, effects = "DEPTH") 
-ce_sbta$DEPTH$gam_low = predict(mgcv::gam(lower__ ~ s(DEPTH, k = 10), data = ce_sbta$DEPTH, family = gaussian()), 
-                                       newdata = ce_sbta$DEPTH)
-ce_sbta$DEPTH$gam_upp = predict(mgcv::gam(upper__ ~ s(DEPTH, k = 10), data = ce_sbta$DEPTH, family = gaussian()), 
-                                       newdata = ce_sbta$DEPTH)
-ce_sbta$DEPTH$gam_est = predict(mgcv::gam(estimate__ ~ s(DEPTH, k = 10), data = ce_sbta$DEPTH, family = gaussian()), 
-                                       newdata = ce_sbta$DEPTH)
-poly_low <- ce_sbta$DEPTH %>% select(DEPTH, gam_low) %>% rename(y = gam_low) %>% arrange(DEPTH) %>%
+## Conditional effect depth
+ce_depth <- conditional_effects(model, effects = "DEPTH") 
+ce_depth$DEPTH$gam_low = predict(mgcv::gam(lower__ ~ s(DEPTH, k = 10), data = ce_depth$DEPTH, family = gaussian()), 
+                                       newdata = ce_depth$DEPTH)
+ce_depth$DEPTH$gam_upp = predict(mgcv::gam(upper__ ~ s(DEPTH, k = 10), data = ce_depth$DEPTH, family = gaussian()), 
+                                       newdata = ce_depth$DEPTH)
+ce_depth$DEPTH$gam_est = predict(mgcv::gam(estimate__ ~ s(DEPTH, k = 10), data = ce_depth$DEPTH, family = gaussian()), 
+                                       newdata = ce_depth$DEPTH)
+poly_low <- ce_depth$DEPTH %>% select(DEPTH, gam_low) %>% rename(y = gam_low) %>% arrange(DEPTH) %>%
   mutate(ymin = 0) %>% select(DEPTH, y, ymin)
-poly_upp <- ce_sbta$DEPTH %>% select(DEPTH, gam_upp) %>% rename(y = gam_upp) %>% arrange(DEPTH) %>%
+poly_upp <- ce_depth$DEPTH %>% select(DEPTH, gam_upp) %>% rename(y = gam_upp) %>% arrange(DEPTH) %>%
   mutate(ymax = 1) %>% select(DEPTH, y, ymax)
-gradient_data <- expand.grid(x = seq(min(ce_sbta$DEPTH$DEPTH)+0.001, max(ce_sbta$DEPTH$DEPTH)-0.001, length.out = 500), 
+gradient_data <- expand.grid(x = seq(min(ce_depth$DEPTH$DEPTH)+0.001, max(ce_depth$DEPTH$DEPTH)-0.001, length.out = 500), 
                              y = seq(0.01, 0.995, length.out = 500)) |> mutate(fill_value = y)
 
-Figure_5C <- ggplot(ce_sbta$DEPTH, aes(x = DEPTH)) +
+Figure_5C <- ggplot(ce_depth$DEPTH, aes(x = DEPTH)) +
   geom_raster(data = gradient_data, aes(x = x, y = y, fill = fill_value), interpolate = TRUE) +
   scale_fill_gradient(low = "#FF6666", high = "#9999FF") +
   geom_ribbon(data = poly_low, aes(ymin = ymin, ymax = y), fill = "white") +
@@ -144,21 +148,22 @@ Figure_5C <- ggplot(ce_sbta$DEPTH, aes(x = DEPTH)) +
         legend.text     = element_text(size = 16),
         legend.position = "none")  
 
-ce_sbta <- conditional_effects(model, effects = "chl") 
-ce_sbta$chl$gam_low = predict(mgcv::gam(lower__ ~ s(chl, k = 10), data = ce_sbta$chl, family = gaussian()), 
-                                       newdata = ce_sbta$chl)
-ce_sbta$chl$gam_upp = predict(mgcv::gam(upper__ ~ s(chl, k = 10), data = ce_sbta$chl, family = gaussian()), 
-                                       newdata = ce_sbta$chl)
-ce_sbta$chl$gam_est = predict(mgcv::gam(estimate__ ~ s(chl, k = 10), data = ce_sbta$chl, family = gaussian()), 
-                                       newdata = ce_sbta$chl)
-poly_low <- ce_sbta$chl %>% select(chl, gam_low) %>% rename(y = gam_low) %>% arrange(chl) %>%
+## Conditional effect depth
+ce_depth <- conditional_effects(model, effects = "chl") 
+ce_depth$chl$gam_low = predict(mgcv::gam(lower__ ~ s(chl, k = 10), data = ce_depth$chl, family = gaussian()), 
+                                       newdata = ce_depth$chl)
+ce_depth$chl$gam_upp = predict(mgcv::gam(upper__ ~ s(chl, k = 10), data = ce_depth$chl, family = gaussian()), 
+                                       newdata = ce_depth$chl)
+ce_depth$chl$gam_est = predict(mgcv::gam(estimate__ ~ s(chl, k = 10), data = ce_depth$chl, family = gaussian()), 
+                                       newdata = ce_depth$chl)
+poly_low <- ce_depth$chl %>% select(chl, gam_low) %>% rename(y = gam_low) %>% arrange(chl) %>%
   mutate(ymin = 0) %>% select(chl, y, ymin)
-poly_upp <- ce_sbta$chl %>% select(chl, gam_upp) %>% rename(y = gam_upp) %>% arrange(chl) %>%
+poly_upp <- ce_depth$chl %>% select(chl, gam_upp) %>% rename(y = gam_upp) %>% arrange(chl) %>%
   mutate(ymax = 1) %>% select(chl, y, ymax)
-gradient_data <- expand.grid(x = seq(min(ce_sbta$chl$chl)+0.001, max(ce_sbta$chl$chl)-0.001, length.out = 500), 
+gradient_data <- expand.grid(x = seq(min(ce_depth$chl$chl)+0.001, max(ce_depth$chl$chl)-0.001, length.out = 500), 
                              y = seq(0.01, 0.995, length.out = 500)) |> mutate(fill_value = y)
 
-Figure_5D <- ggplot(ce_sbta$chl, aes(x = chl)) +
+Figure_5D <- ggplot(ce_depth$chl, aes(x = chl)) +
   geom_raster(data = gradient_data, aes(x = x, y = y, fill = fill_value), interpolate = TRUE) +
   scale_fill_gradient(low = "#FF6666", high = "#9999FF") +
   geom_ribbon(data = poly_low, aes(ymin = ymin, ymax = y), fill = "white") +
