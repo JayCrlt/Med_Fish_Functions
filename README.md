@@ -14,9 +14,8 @@ All functional rates are derived using the [**FishFlux** framework](https://besj
 1. ### **Biomass Production (Growth Rate)**
 2. ### **Phosphorus (P) Excretion**
 3. ### **Nitrogen (N) Excretion**
-4. ### **Herbivory Consumption**
-5. ### **Piscivory Consumption**
-6. ### **Scavenger Production**
+4. ### **Benthivory Consumption**
+5. ### **Planktivory Consumption**
 
 > Estimates and units are adapted from **Schiettekatte et al., 2021** and extended using approaches from **Rosen et al., 2025** and **Vianna et al., 2017**.
 
