@@ -8,6 +8,7 @@ library("rnaturalearth") ; library("rnaturalearthdata") ; library("broom") ; lib
 ## Download data
 Env <- read.delim("Data/HAULS_DB_ENV_HINDCAST_COMPLETE_2024.csv", sep = ";")
 FD  <- read.delim("Data/Grid_taxfd.csv", sep = ",")
+reg <- st_read("Data/reg_/reg_.shp") |> mutate(Name = coalesce(Name, layer)) |> select(Name, geometry)
 
 ## Charge from previous scripts
 load("Data/HAULS_DB_FPI.RData")
@@ -34,6 +35,10 @@ merged_sf <- st_join(Slopes, st_as_sf(Env_FI, coords = c("X", "Y"), crs = 4326),
               filter(term == "YEAR") |> select(HEX_ID, metric, slope = estimate) |> rename("grid.id" = "HEX_ID") |> 
               pivot_wider(names_from = metric, values_from = slope, names_glue = "{metric}_slope"), by = "grid.id") |> st_as_sf() |> 
   rename("abundance_change" = "TOTAL_NUMBER_IN_THE_HAUL_slope", "fdiv_change" = "fdiv_slope")
+
+## Asure that regions works
+# st_is_valid(reg) ; reg <- st_make_valid(reg)
+# merged_with_regions <- st_join(merged_sf, reg, join = st_within)
 
 ## Check correlation before modelling
 merged_sf |> st_drop_geometry() |> select(c(2:9, 65:79)) |> mutate(across(everything(), as.numeric)) |> 
@@ -99,6 +104,7 @@ Figure_5A <- ggplot(ce_FPI$FPI_combined, aes(x = FPI_combined)) +
     geom_line(aes(y = gam_upp), size = 0.5, color = "black") +
     geom_point(data = merged_sf, aes(y = Mf_bin, x = FPI_combined, fill = Mf_bin), shape = 21, size = 3) +
     scale_x_continuous(expand = c(0, 0)) + 
+    scale_y_continuous(breaks = c(0, 0.5, 1), labels = c(-1, 0, 1)) +
     geom_hline(yintercept = 0.5, linetype = "dashed", color = "black", size = 0.5) +
     annotate("text", x = min(ce_FPI$FPI_combined$FPI_combined)+0.01, y = 0.52, 
              label = "no change", hjust = 0, vjust = 0, size = 4, fontface = "italic") +
@@ -107,9 +113,7 @@ Figure_5A <- ggplot(ce_FPI$FPI_combined, aes(x = FPI_combined)) +
      theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
            plot.title      = element_text(size = 20),
            axis.title      = element_text(size = 18),
-           axis.text.x     = element_text(size = 16),
-           axis.text.y     = element_blank(),      
-           axis.ticks.y    = element_blank(),    
+           axis.text       = element_text(size = 16),
            legend.title    = element_text(size = 18),
            legend.text     = element_text(size = 16),
            legend.position = "none")  
