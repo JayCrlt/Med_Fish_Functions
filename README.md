@@ -74,6 +74,11 @@ This repository is organized to facilitate reproducibility and clarity in workfl
 
 ---
 
+## ✍️ Link to the draft
+https://docs.google.com/document/d/1MQcXIyamBE-r1NjDXzv9_ILMcISH1i9CewiFv-vKlXk/edit?tab=t.0
+
+---
+
 ## 📦 Dependencies (R)
 
 ```r
