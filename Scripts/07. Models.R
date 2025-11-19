@@ -8,7 +8,7 @@ library("rnaturalearth") ; library("rnaturalearthdata") ; library("broom") ; lib
 ## Download data
 Env <- read.delim("Data/HAULS_DB_ENV_HINDCAST_COMPLETE_2024.csv", sep = ";")
 FD  <- read.delim("Data/Grid_taxfd.csv", sep = ",")
-reg <- st_read("Data/reg_/reg_.shp") |> mutate(Name = coalesce(Name, layer)) |> select(Name, geometry)
+reg <- st_read("Data/MSFD/MSFD_Regions_and_Subregions_LAEA_20221003.shp") |> select(regionName, geometry) |> st_zm(drop = TRUE)
 
 ## Charge from previous scripts
 load("Data/HAULS_DB_FPI.RData")
@@ -37,8 +37,9 @@ merged_sf <- st_join(Slopes, st_as_sf(Env_FI, coords = c("X", "Y"), crs = 4326),
   rename("abundance_change" = "TOTAL_NUMBER_IN_THE_HAUL_slope", "fdiv_change" = "fdiv_slope")
 
 ## Asure that regions works
+# sf::sf_use_s2(FALSE) ; reg <- st_make_valid(st_buffer(reg, 0)) ; reg <- st_transform(4326)
 # st_is_valid(reg) ; reg <- st_make_valid(reg)
-# merged_with_regions <- st_join(merged_sf, reg, join = st_within)
+# merged_with_regions <- st_join(merged_sf, reg, join = st_within) ; sf::sf_use_s2(TRUE)
 
 ## Check correlation before modelling
 merged_sf |> st_drop_geometry() |> select(c(2:9, 65:79)) |> mutate(across(everything(), as.numeric)) |> 
