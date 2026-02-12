@@ -84,8 +84,8 @@ Slopes <- st_as_sf(medits_with_hexID_over_10years |>
 
 ## Plots
 Figure_4A1 <- ggplot() +
-  geom_sf(data = subset(Slopes, Gc_trend_class %in% c("2. negative trend", "3. positive trend")),
-          aes(fill = Gc_trend_class, color = Gc_trend_class, size = Gc_trend_class, shape = Gc_trend_class)) +
+  #geom_sf(data = subset(Slopes, Gc_trend_class %in% c("2. negative trend", "3. positive trend")),
+  #        aes(fill = Gc_trend_class, color = Gc_trend_class, size = Gc_trend_class, shape = Gc_trend_class)) +
   geom_sf(data = subset(Slopes, Gc_trend_class %in% c("1. significantly negative", "4. significantly positive")),
           aes(fill = Gc_trend_class, color = Gc_trend_class, size = Gc_trend_class, shape = Gc_trend_class)) +
   scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
@@ -108,8 +108,8 @@ Figure_4A1 <- ggplot() +
         legend.position = "none")
 
 Figure_4B1 <- ggplot() +
-  geom_sf(data = subset(Slopes, Fn_trend_class %in% c("2. negative trend", "3. positive trend")),
-          aes(fill = Fn_trend_class, color = Fn_trend_class, size = Fn_trend_class, shape = Fn_trend_class)) +
+  #geom_sf(data = subset(Slopes, Fn_trend_class %in% c("2. negative trend", "3. positive trend")),
+  #        aes(fill = Fn_trend_class, color = Fn_trend_class, size = Fn_trend_class, shape = Fn_trend_class)) +
   geom_sf(data = subset(Slopes, Fn_trend_class %in% c("1. significantly negative", "4. significantly positive")),
           aes(fill = Fn_trend_class, color = Fn_trend_class, size = Fn_trend_class, shape = Fn_trend_class)) +
   scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
@@ -132,8 +132,8 @@ Figure_4B1 <- ggplot() +
         legend.position = "none")
 
 Figure_4C1 <- ggplot() +
-  geom_sf(data = subset(Slopes, Fp_trend_class %in% c("2. negative trend", "3. positive trend")),
-          aes(fill = Fp_trend_class, color = Fp_trend_class, size = Fp_trend_class, shape = Fp_trend_class)) +
+  #geom_sf(data = subset(Slopes, Fp_trend_class %in% c("2. negative trend", "3. positive trend")),
+  #        aes(fill = Fp_trend_class, color = Fp_trend_class, size = Fp_trend_class, shape = Fp_trend_class)) +
   geom_sf(data = subset(Slopes, Fp_trend_class %in% c("1. significantly negative", "4. significantly positive")),
           aes(fill = Fp_trend_class, color = Fp_trend_class, size = Fp_trend_class, shape = Fp_trend_class)) +
   scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
@@ -156,8 +156,8 @@ Figure_4C1 <- ggplot() +
         legend.position = "none")
 
 Figure_4D1 <- ggplot() +
-  geom_sf(data = subset(Slopes, IcP_trend_class %in% c("2. negative trend", "3. positive trend")),
-          aes(fill = IcP_trend_class, color = IcP_trend_class, size = IcP_trend_class, shape = IcP_trend_class)) +
+  #geom_sf(data = subset(Slopes, IcP_trend_class %in% c("2. negative trend", "3. positive trend")),
+  #        aes(fill = IcP_trend_class, color = IcP_trend_class, size = IcP_trend_class, shape = IcP_trend_class)) +
   geom_sf(data = subset(Slopes, IcP_trend_class %in% c("1. significantly negative", "4. significantly positive")),
           aes(fill = IcP_trend_class, color = IcP_trend_class, size = IcP_trend_class, shape = IcP_trend_class)) +
   scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
@@ -180,8 +180,8 @@ Figure_4D1 <- ggplot() +
         legend.position = "none")
 
 Figure_4E1 <- ggplot() +
-  geom_sf(data = subset(Slopes, IcB_trend_class %in% c("2. negative trend", "3. positive trend")),
-          aes(fill = IcB_trend_class, color = IcB_trend_class, size = IcB_trend_class, shape = IcB_trend_class)) +
+  #geom_sf(data = subset(Slopes, IcB_trend_class %in% c("2. negative trend", "3. positive trend")),
+  #        aes(fill = IcB_trend_class, color = IcB_trend_class, size = IcB_trend_class, shape = IcB_trend_class)) +
   geom_sf(data = subset(Slopes, IcB_trend_class %in% c("1. significantly negative", "4. significantly positive")),
           aes(fill = IcB_trend_class, color = IcB_trend_class, size = IcB_trend_class, shape = IcB_trend_class)) +
   scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
@@ -204,8 +204,8 @@ Figure_4E1 <- ggplot() +
         legend.position = "none")
 
 Figure_4F1 <- ggplot() +
-  geom_sf(data = subset(Slopes, Mf_trend_class %in% c("2. negative trend", "3. positive trend")),
-          aes(fill = Mf_trend_class, color = Mf_trend_class, size = Mf_trend_class, shape = Mf_trend_class)) +
+  #geom_sf(data = subset(Slopes, Mf_trend_class %in% c("2. negative trend", "3. positive trend")),
+  #        aes(fill = Mf_trend_class, color = Mf_trend_class, size = Mf_trend_class, shape = Mf_trend_class)) +
   geom_sf(data = subset(Slopes, Mf_trend_class %in% c("1. significantly negative", "4. significantly positive")),
           aes(fill = Mf_trend_class, color = Mf_trend_class, size = Mf_trend_class, shape = Mf_trend_class)) +
   scale_shape_manual(values = c("1. significantly negative" = 21, "4. significantly positive" = 21, 
@@ -227,46 +227,64 @@ Figure_4F1 <- ggplot() +
         legend.text     = element_text(size = 16),
         legend.position = "none")
 
-Figure_4A2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Gc_trend_class) %>% summarise(n = n()) |> 
-  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
-  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+Figure_4A2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Gc_trend_class) %>% 
+  summarise(n = n(), .groups = "drop") %>% mutate(Fraction = n / sum(n)) %>%
+  ggplot(aes(x = 2, y = Fraction, fill = Class, linetype = Class)) + geom_col(width = 1, color = "black") +
+  coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999", 
                                "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  scale_linetype_manual(values = c("1. significantly negative" = "solid", "2. negative trend" = "dashed",
+                                   "3. positive trend" = "dashed", "4. significantly positive"= "solid")) +
   theme(legend.position = "none")
 
-Figure_4B2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Fn_trend_class) %>% summarise(n = n()) |> 
-  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
-  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+Figure_4B2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Fn_trend_class) %>% 
+  summarise(n = n(), .groups = "drop") %>% mutate(Fraction = n / sum(n)) %>%
+  ggplot(aes(x = 2, y = Fraction, fill = Class, linetype = Class)) + geom_col(width = 1, color = "black") +
+  coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999", 
                                "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  scale_linetype_manual(values = c("1. significantly negative" = "solid", "2. negative trend" = "dashed",
+                                   "3. positive trend" = "dashed", "4. significantly positive"= "solid")) +
   theme(legend.position = "none")
 
-Figure_4C2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Fp_trend_class) %>% summarise(n = n()) |> 
-  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
-  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+Figure_4C2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Fp_trend_class) %>% 
+  summarise(n = n(), .groups = "drop") %>% mutate(Fraction = n / sum(n)) %>%
+  ggplot(aes(x = 2, y = Fraction, fill = Class, linetype = Class)) + geom_col(width = 1, color = "black") +
+  coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999", 
                                "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  scale_linetype_manual(values = c("1. significantly negative" = "solid", "2. negative trend" = "dashed",
+                                   "3. positive trend" = "dashed", "4. significantly positive"= "solid")) +
   theme(legend.position = "none")
 
-Figure_4D2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = IcP_trend_class) %>% summarise(n = n()) |> 
-  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
-  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+Figure_4D2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = IcP_trend_class) %>%
+  summarise(n = n(), .groups = "drop") %>% mutate(Fraction = n / sum(n)) %>%
+  ggplot(aes(x = 2, y = Fraction, fill = Class, linetype = Class)) + geom_col(width = 1, color = "black") +
+  coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999", 
                                "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  scale_linetype_manual(values = c("1. significantly negative" = "solid", "2. negative trend" = "dashed",
+                                   "3. positive trend" = "dashed", "4. significantly positive"= "solid")) +
   theme(legend.position = "none")
 
-Figure_4E2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = IcB_trend_class) %>% summarise(n = n()) |> 
-  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
-  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+Figure_4E2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = IcB_trend_class) %>%
+  summarise(n = n(), .groups = "drop") %>% mutate(Fraction = n / sum(n)) %>%
+  ggplot(aes(x = 2, y = Fraction, fill = Class, linetype = Class)) + geom_col(width = 1, color = "black") +
+  coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999", 
                                "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  scale_linetype_manual(values = c("1. significantly negative" = "solid", "2. negative trend" = "dashed",
+                                   "3. positive trend" = "dashed", "4. significantly positive"= "solid")) +
   theme(legend.position = "none")
 
-Figure_4F2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Mf_trend_class) %>% summarise(n = n()) |> 
-  mutate(Fraction = n / sum(n)) |> ggplot(aes(x = 2, y = Fraction, fill = Class)) +
-  geom_col(width = 1, color = "black") + coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
-  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999",
+Figure_4F2 <- Slopes %>% st_drop_geometry() %>% group_by(Class = Mf_trend_class) %>%
+  summarise(n = n(), .groups = "drop") %>% mutate(Fraction = n / sum(n)) %>%
+  ggplot(aes(x = 2, y = Fraction, fill = Class, linetype = Class)) + geom_col(width = 1, color = "black") +
+  coord_polar(theta = "y") + xlim(0.5, 2.5) + theme_void() +
+  scale_fill_manual(values = c("1. significantly negative" = "#FF6666", "2. negative trend" = "#FF9999", 
                                "3. positive trend" = "#CCCCFF", "4. significantly positive" = "#9999FF")) +
+  scale_linetype_manual(values = c("1. significantly negative" = "solid", "2. negative trend" = "dashed",
+                                   "3. positive trend" = "dashed", "4. significantly positive"= "solid")) +
   theme(legend.position = "none")
 
   # Add pie plot insets
