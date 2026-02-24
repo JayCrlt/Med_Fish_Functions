@@ -140,7 +140,7 @@ Med_all_th_sum$uuid[Med_all_th_sum$Family == "Chlorophthalmidae"] = "1ac790b5-d3
 Med_all_th_sum$uuid[Med_all_th_sum$Family == "Cepolidae"]         = "23c0bb71-c7f1-4ce2-9bf9-e1c8947f2501"
 Med_all_th_sum$uuid[Med_all_th_sum$Family == "Liparidae"]         = "380c8d99-e483-4473-a6aa-fa3668e58279"
 
-Med_all_th = Med_all_th |> dplyr::filter(Family != "Salmonidae")
+Med_all_th = Med_all_th |> dplyr::filter(Family != "Salmonidae") |> dplyr::filter(Family != "Molidae")
 Phosphorus  = Med_all_th |> left_join(Med_all_th_sum) |> distinct(Family, Fp_family_mean) |> 
   arrange(desc(Fp_family_mean)) |> slice_head(n = 10) |> 
   left_join(Med_all_th_sum |> dplyr::select(Family, uuid)) |> 
