@@ -178,11 +178,12 @@ Family_rates <- rbind(Phosphorus, Nitrogen, Carbon, Planktivory, Benthivory) |>
 
 Figure_2A = Family_rates |> 
   filter(variable == "Fn") |> 
-  ggplot(aes(x = reorder(ID, Mean_rate), y = Mean_rate)) +
-  geom_segment(aes(xend = reorder(ID, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
+  ggplot(aes(x = reorder(Family, Mean_rate), y = Mean_rate)) +
+  geom_segment(aes(xend = reorder(Family, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
   geom_point(size = 5, fill = "#A3B79C", color = "black", shape = 21) +
   scale_x_discrete(guide = guide_axis(n.dodge = 1)) +
-  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + 
+  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), 
+                                                       limits = c(0,max(Family_rates$Mean_rate[Family_rates$variable == "Fn"]) * 1.20)) + 
   labs(x = NULL, y = expression(atop("Nitrogen excretion", "(gN kg"^{-1}~d^{-1}*")"))) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
@@ -194,11 +195,12 @@ Figure_2A = Family_rates |>
 
 Figure_2B = Family_rates |> 
   filter(variable == "Fp") |> 
-  ggplot(aes(x = reorder(ID, Mean_rate), y = Mean_rate)) +
-  geom_segment(aes(xend = reorder(ID, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
+  ggplot(aes(x = reorder(Family, Mean_rate), y = Mean_rate)) +
+  geom_segment(aes(xend = reorder(Family, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
   geom_point(size = 5, fill = "#FFF1BA", color = "black", shape = 21) +
   scale_x_discrete(guide = guide_axis(n.dodge = 1)) +
-  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + 
+  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05)),
+                                                       limits = c(0,max(Family_rates$Mean_rate[Family_rates$variable == "Fp"]) * 1.20)) + 
   labs(x = NULL, y = expression(atop("Phosphorus excretion", "(gP kg"^{-1}~d^{-1}*")"))) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
@@ -210,11 +212,12 @@ Figure_2B = Family_rates |>
 
 Figure_2C = Family_rates |> 
   filter(variable == "Gc") |> 
-  ggplot(aes(x = reorder(ID, Mean_rate), y = Mean_rate)) +
-  geom_segment(aes(xend = reorder(ID, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
+  ggplot(aes(x = reorder(Family, Mean_rate), y = Mean_rate)) +
+  geom_segment(aes(xend = reorder(Family, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
   geom_point(size = 5, fill = "#B4CBF0", color = "black", shape = 21) +
   scale_x_discrete(guide = guide_axis(n.dodge = 1)) +
-  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + 
+  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), 
+                                                       limits = c(0,max(Family_rates$Mean_rate[Family_rates$variable == "Gc"]) * 1.20))  + 
   labs(x = NULL, y = expression(atop("Production", "(gC kg"^{-1}~d^{-1}*")"))) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
@@ -226,11 +229,12 @@ Figure_2C = Family_rates |>
 
 Figure_2D = Family_rates |> 
   filter(variable == "IcP") |> 
-  ggplot(aes(x = reorder(ID, Mean_rate), y = Mean_rate)) +
-  geom_segment(aes(xend = reorder(ID, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
+  ggplot(aes(x = reorder(Family, Mean_rate), y = Mean_rate)) +
+  geom_segment(aes(xend = reorder(Family, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
   geom_point(size = 5, fill = "#CCA9DD", color = "black", shape = 21) +
   scale_x_discrete(guide = guide_axis(n.dodge = 1)) +
-  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + 
+  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), 
+                                                       limits = c(0,max(Family_rates$Mean_rate[Family_rates$variable == "IcP"]) * 1.20)) +  
   labs(x = NULL, y = expression(atop("Planktivory", "(gC kg"^{-1}~d^{-1}*")"))) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
@@ -242,11 +246,12 @@ Figure_2D = Family_rates |>
 
 Figure_2E = Family_rates |> 
   filter(variable == "IcB") |> 
-  ggplot(aes(x = reorder(ID, Mean_rate), y = Mean_rate)) +
-  geom_segment(aes(xend = reorder(ID, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
+  ggplot(aes(x = reorder(Family, Mean_rate), y = Mean_rate)) +
+  geom_segment(aes(xend = reorder(Family, Mean_rate), y = 0, yend = Mean_rate), color = "grey60", size = 1.2) +
   geom_point(size = 5, fill = "#FAC898", color = "black", shape = 21) +
   scale_x_discrete(guide = guide_axis(n.dodge = 1)) +
-  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + 
+  coord_flip() + theme_classic() +  scale_y_continuous(expand = expansion(mult = c(0, 0.05)), 
+                                                       limits = c(0,max(Family_rates$Mean_rate[Family_rates$variable == "IcB"]) * 1.20)) + 
   labs(x = NULL, y = expression(atop("Benthivory", "(gC kg"^{-1}~d^{-1}*")"))) +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
@@ -256,9 +261,9 @@ Figure_2E = Family_rates |>
         legend.text     = element_text(size = 12),
         legend.position = "bottom")
 
-Figure_2_tot = (Figure_2A + Figure_2B + Figure_2C + Figure_2D + Figure_2E) +
+Figure_2_tot = (Figure_2C + Figure_2A + Figure_2B + Figure_2D + Figure_2E) +
                   plot_layout(ncol = 3)
 
 #### Export the data  ----
 ## Figures
-ggsave(Figure_2_tot, filename = "Figure_2.png", path = "Outputs/Raw/", device = "png", width=10,  height=8, dpi=300)  
+ggsave(Figure_2_tot, filename = "Figure_2_alt.png", path = "Outputs/Raw/", device = "png", width=15,  height=8, dpi=300)  
