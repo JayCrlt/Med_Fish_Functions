@@ -23,14 +23,15 @@ meow               <- st_read("Data/Datos Atlántico/MEOW-TNC/meow_ecos.shp")
 load("Data/Datos Atlántico/community_and_traits.RData")
 load("Data/Datos Atlántico/survey_all_combined.RData")
 load("Data/Datos Atlántico/FishGlob_public_clean.RData")
+load("Outputs/FLUXGLOB/dat_proc/NMDS_Fish_Assemblages.RData")
 
 ### Exploration
 ###############
 
 # Merging the three datasets
 clean_numeric      <- function(x) as.numeric(gsub(",", ".", x))
-data_Atl           <- data |> select(haul_id, longitude, latitude, year) |> distinct()
-data_Med           <- Medits_total |> select(id, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC, YEAR) |> 
+data_Atl           <- data |> dplyr::select(haul_id, longitude, latitude, year) |> distinct()
+data_Med           <- Medits_total |> dplyr::select(id, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC, YEAR) |> 
                       mutate(MEAN_LONGITUDE_DEC = clean_numeric(MEAN_LONGITUDE_DEC), 
                              MEAN_LATITUDE_DEC = clean_numeric(MEAN_LATITUDE_DEC)) |> distinct()
 colnames(data_Med) <- colnames(data_Atl)
@@ -88,7 +89,7 @@ hex_sf     <- hex_sf |> left_join(hex_ts, by = "cell")
 
 # Regions
 meow_robin <- st_transform(meow, robin)
-hex_sf     <- st_join(hex_sf, meow_robin |> select(ECOREGION, ECO_CODE, PROVINCE, PROV_CODE))
+hex_sf     <- st_join(hex_sf, meow_robin |> dplyr::select(ECOREGION, ECO_CODE, PROVINCE, PROV_CODE))
 hex_sf$ECOREGION[st_coordinates(st_centroid(hex_sf))[ ,1] > 13000000] <- "Aleutian Islands 2" 
 hex_sf     <- hex_sf |> drop_na()
 cell_meow  <- st_join(hex_sf, meow_robin)
@@ -162,7 +163,7 @@ FLUXGLOB = rbind(MEDITS, FISHGLOB) |>
   mutate(Longitude = as.numeric(str_replace(Longitude, ",", ".")),
          Latitude  = as.numeric(str_replace(Latitude, ",", "."))) |>
   st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) |> st_transform(robin) |> 
-  st_join(hex_sf |> select(cell, ECOREGION, ECO_CODE, PROVINCE, PROV_CODE), left = TRUE) |> drop_na(ECO_CODE)
+  st_join(hex_sf |> dplyr::select(cell, ECOREGION, ECO_CODE, PROVINCE, PROV_CODE), left = TRUE) |> drop_na(ECO_CODE)
 
 # Code Figure 1 Ecoregions
 Code_Fig_1a = data.frame(ECOREGION = unique(FLUXGLOB$ECOREGION),
@@ -182,18 +183,30 @@ Area_Covered = FLUXGLOB |> group_by(subplot_Fig1, cell) |> summarise(n = n()) |>
 comm_eco_year         <- FLUXGLOB |> st_drop_geometry() |> group_by(ECOREGION, Year, SpecCode) |>
   summarise(Weight_CPUA = mean(Weight_CPUA, na.rm = TRUE),  .groups = "drop") |>
   pivot_wider(names_from = SpecCode, values_from = Weight_CPUA, values_fill = 0)
-meta                  <- comm_eco_year |> select(ECOREGION, Year)
-comm                  <- comm_eco_year |> select(-ECOREGION, -Year)
+meta                  <- comm_eco_year |> dplyr::select(ECOREGION, Year)
+comm                  <- comm_eco_year |> dplyr::select(-ECOREGION, -Year)
 comm[is.na(comm)]     <- 0
 comm_hel              <- vegan::decostand(comm, method = "hellinger")
 keep                  <- rowSums(comm_hel) > 0
 comm_hel              <- comm_hel[keep, ]
 meta                  <- meta[keep, ]
-nmds                  <- vegan::metaMDS(comm_hel, distance = "bray", k = 2, trymax = 100)
+
+## The NMDS ordination used in the submitted manuscript was saved and archived to ensure full reproducibility of the reported results. 
+## Because NMDS relies on an iterative optimization procedure, rerunning the analysis may produce slightly different point coordinates 
+## and stress values. However, these minor numerical differences do not affect the overall ordination structure, the identification of 
+## assemblage clusters, or the biological interpretations presented in the manuscript.
+#nmds                  <- vegan::metaMDS(comm_hel, distance = "bray", k = 2, trymax = 100)
+
+## /!\ I edited wrongly the names previously and ran the NMDS with wrong names /!\ 
+meta$ECOREGION[meta$ECOREGION == "Adriatic Sea" & meta$Year <= 2012]     = "Aleutian Islands"
+meta$ECOREGION[meta$ECOREGION == "Aleutian Islands" & meta$Year <= 1995] = "Adriatic Sea"
+
 site_scores           <- as.data.frame(nmds$points)
 colnames(site_scores) <- c("NMDS1", "NMDS2")
 site_scores$ECOREGION <- meta$ECOREGION
 site_scores$Year      <- meta$Year
+
+site_scores |> dplyr::filter(ECOREGION == "Aleutian Islands") |> ggplot(aes(x = NMDS1, y = NMDS2)) + geom_point()
 
 ### Kernel densities
 k            <- MASS::kde2d(site_scores$NMDS1, site_scores$NMDS2, n = 200, lims = c(-4,3,-3,3.5))
@@ -231,7 +244,7 @@ sites_Kernel <- site_scores |> dplyr::filter(NMDS1 > 0.19, NMDS1 < 0.53, NMDS2 >
 sites_Kernel <- comm_eco_year |> mutate(ER_Year = paste(ECOREGION, "_", Year, sep = "")) |> 
   dplyr::filter(ER_Year %in% sites_Kernel$ER_Year) |> 
   pivot_longer(cols = -c(ECOREGION, Year, ER_Year), names_to = "SpecCode", values_to = "Biomass") |> 
-  mutate(SpecCode = as.integer(SpecCode)) |> left_join(rfishbase::load_taxa() |> select(SpecCode, Species)) |> 
+  mutate(SpecCode = as.integer(SpecCode)) |> left_join(rfishbase::load_taxa() |> dplyr::select(SpecCode, Species)) |> 
   group_by(SpecCode, Species) |> summarise(Biomass = mean(Biomass))
 
 ## Sub-NMDS Fig1c-1h
@@ -247,6 +260,8 @@ site_scores_1c = site_scores |>
   mutate(ECOREGION = case_match(ECOREGION, "Aleutian Islands 2" ~ "Aleutian Islands", .default = ECOREGION)) |> 
   mutate(ER_Year = paste(ECOREGION, "_", Year, sep = "")) |> 
   dplyr::filter(ER_Year %in% Fig1c_sites$ER_Year) |> dplyr::select(-ER_Year)
+
+plot(site_scores_1c$NMDS1, site_scores_1c$NMDS2)
 
 Figure_1c = ggplot(site_scores_1c, aes(NMDS1, NMDS2)) +
   geom_polygon(data = isoline_0.99, aes(x, y, group = group), fill = NA, color = "black", linewidth = 0.75) +
@@ -370,8 +385,7 @@ Figure_1h = ggplot(site_scores_1h, aes(NMDS1, NMDS2)) +
 
 ## Color gradient legend
 heatmap_df <- tibble(Year = 1963:2024, y = 1)
-
-Figure_1i <- ggplot(heatmap_df, aes(Year, y, fill = Year)) + geom_tile(show.legend = F) + 
+Figure_1i  <- ggplot(heatmap_df, aes(Year, y, fill = Year)) + geom_tile(show.legend = F) + 
   scale_fill_gradientn(colours = year_cols, values = scales::rescale(year_breaks), limits = c(1963, 2024)) +
   scale_x_continuous(breaks = year_breaks, expand = c(0, 0)) +
   scale_y_continuous(NULL, breaks = NULL, expand = c(0, 0)) +
@@ -391,4 +405,7 @@ ggsave(Figure_1e, filename = "Outputs/FLUXGLOB/Raw/Figure_1e_Eli.png", path = "O
 ggsave(Figure_1f, filename = "Outputs/FLUXGLOB/Raw/Figure_1f_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
 ggsave(Figure_1g, filename = "Outputs/FLUXGLOB/Raw/Figure_1g_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
 ggsave(Figure_1h, filename = "Outputs/FLUXGLOB/Raw/Figure_1h_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1i, filename = "Outputs/FLUXGLOB/Raw/Figure_1i_Eli.png", path = "Outputs/", device = "png", width = 10, height = .2, dpi = 300)  
+ggsave(Figure_1i, filename = "Outputs/FLUXGLOB/Raw/Figure_1i_Eli.png", path = "Outputs/", device = "png", width = 10, height = .2, dpi = 300)
+
+##### Save NMDS Model
+save(nmds, file = "Outputs/FLUXGLOB/dat_proc/NMDS_Fish_Assemblages.RData")
