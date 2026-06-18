@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+
 # The data is confidential upon publication release
 Data/Medits_TableA.csv
 Data/Medits_TableB.csv
@@ -12,3 +13,8 @@ Data/TATB_WMED_1999-2021_clean.csv
 Data/Catchs
 Data/Temp_HindCast_WMED.xlsx
 Data/HAULS_DB_ENV_HINDCAST_COMPLETE_2024.csv 
+Data/Datos Atlántico/
+
+# The submission folder and the graphical abstracts will be released upon publication
+Submission/
+Outputs/Graphical_Abstract/
