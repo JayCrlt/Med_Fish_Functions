@@ -262,7 +262,7 @@ Figure_5E <- ggplot(ce_fdiv$fdiv_change, aes(x = fdiv_change)) +
   annotate("text", x = min(ce_fdiv$FPI_combined$FPI_combined)+0.01, y = 0.52, 
            label = "no change", hjust = 0, vjust = 0, size = 4, fontface = "italic") +
   coord_cartesian(ylim = c(0, 1)) + theme_classic() +
-  labs(x = "Functional diversity change", y = "") +
+  labs(x = "Functional divergence change", y = "") +
   theme(panel.border    = element_rect(color = "black", fill = NA, size = 1),
         plot.title      = element_text(size = 20),
         axis.title      = element_text(size = 18),
