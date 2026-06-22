@@ -1,10 +1,10 @@
 #### Setting up          ----
 rm(list = ls())
 library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales") 
-library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("brms") 
+library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("ggforce")
 library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("purrr")
-library("rnaturalearth") ; library("rnaturalearthdata") ; library("hexbin") ; library("ggforce")
-library("RColorBrewer") ; library("MASS") ; library("sf") ; library("leaflet.extras")
+library("rnaturalearth") ; library("rnaturalearthdata") ; library("hexbin") ; library("leaflet.extras") 
+library("RColorBrewer") ; library("MASS") ; library("sf") ; library("brms") ; library("stringr") ; library("ggtext")
 
 ## Functions
 source("Scripts/00_functions_script.R")
@@ -396,16 +396,38 @@ Figure_1i  <- ggplot(heatmap_df, aes(Year, y, fill = Year)) + geom_tile(show.leg
         axis.title   = element_blank(),
         panel.border = element_rect(color = "white", fill = NA, linewidth = 1))
 
+### Extended Figure 1 per Ecoregions
+label_levels <- Code_Fig_1 |> arrange(ID_Fig1) |> mutate(label = make_label(ID_Fig1, ECOREGION)) |> pull(label)
+Ext_Fig_1    <- site_scores |> mutate(ECOREGION = case_match(ECOREGION, "Aleutian Islands 2" ~ "Aleutian Islands", .default = ECOREGION)) |>
+  left_join(Code_Fig_1) |> mutate(label = factor(make_label(ID_Fig1, ECOREGION), levels = label_levels)) |>
+  ggplot(aes(NMDS1, NMDS2)) +
+  geom_polygon(data = isoline_0.99, aes(x, y, group = group), fill = NA, color = "black", linewidth = 0.75) +
+  geom_polygon(data = isoline_0.75, aes(x, y, group = group), fill = NA, color = "black", linetype = "dashed") +
+  geom_polygon(data = isoline_0.50, aes(x, y, group = group), fill = NA, color = "black", linetype = "dashed") +
+  geom_point(aes(fill = Year, color = Year), size = 2.5, shape = 21) +
+  scale_fill_gradientn(colours = year_cols, values = scales::rescale(year_breaks), limits = c(1963, 2024), breaks = year_breaks) +
+  scale_color_gradientn(colours = year_cols, values = scales::rescale(year_breaks), limits = c(1963, 2024), breaks = year_breaks) +
+  scale_y_continuous(name = "", limits = c(-2.5, 3.5)) + scale_x_continuous(name = "", limits = c(-4, 3)) +
+  theme_void() + facet_wrap(~label) +
+  theme(axis.text        = element_blank(),
+        axis.ticks       = element_blank(),
+        axis.title       = element_blank(),
+        legend.position  = "none",
+        strip.text       = ggtext::element_markdown(hjust = 0, lineheight = 1.05),
+        strip.background = element_blank(),
+        panel.border     = element_rect(color = "black", fill = NA, linewidth = 1))
+
 ##### Export Figure
-ggsave(Figure_1a, filename = "Outputs/FLUXGLOB/Raw/Figure_1a_Eli.png", path = "Outputs/", device = "png", width = 16, height = 04, dpi = 300)  
-ggsave(Figure_1b, filename = "Outputs/FLUXGLOB/Raw/Figure_1b_Eli.png", path = "Outputs/", device = "png", width = 07, height = 07, dpi = 300)  
-ggsave(Figure_1c, filename = "Outputs/FLUXGLOB/Raw/Figure_1c_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1d, filename = "Outputs/FLUXGLOB/Raw/Figure_1d_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1e, filename = "Outputs/FLUXGLOB/Raw/Figure_1e_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1f, filename = "Outputs/FLUXGLOB/Raw/Figure_1f_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1g, filename = "Outputs/FLUXGLOB/Raw/Figure_1g_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1h, filename = "Outputs/FLUXGLOB/Raw/Figure_1h_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
-ggsave(Figure_1i, filename = "Outputs/FLUXGLOB/Raw/Figure_1i_Eli.png", path = "Outputs/", device = "png", width = 10, height = .2, dpi = 300)
+ggsave(Figure_1a, filename = "FLUXGLOB/Raw/Figure_1a_Eli.png", path = "Outputs/", device = "png", width = 16, height = 04, dpi = 300)  
+ggsave(Figure_1b, filename = "FLUXGLOB/Raw/Figure_1b_Eli.png", path = "Outputs/", device = "png", width = 07, height = 07, dpi = 300)  
+ggsave(Figure_1c, filename = "FLUXGLOB/Raw/Figure_1c_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
+ggsave(Figure_1d, filename = "FLUXGLOB/Raw/Figure_1d_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
+ggsave(Figure_1e, filename = "FLUXGLOB/Raw/Figure_1e_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
+ggsave(Figure_1f, filename = "FLUXGLOB/Raw/Figure_1f_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
+ggsave(Figure_1g, filename = "FLUXGLOB/Raw/Figure_1g_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
+ggsave(Figure_1h, filename = "FLUXGLOB/Raw/Figure_1h_Eli.png", path = "Outputs/", device = "png", width = 02, height = 02, dpi = 300)  
+ggsave(Figure_1i, filename = "FLUXGLOB/Raw/Figure_1i_Eli.png", path = "Outputs/", device = "png", width = 10, height = .2, dpi = 300)
+ggsave(Ext_Fig_1, filename = "FLUXGLOB/Raw/Figure_S1_Eli.png", path = "Outputs/", device = "png", width = 12, height = 11, dpi = 300)
 
 ##### Save NMDS Model
 save(nmds, file = "Outputs/FLUXGLOB/dat_proc/NMDS_Fish_Assemblages.RData")

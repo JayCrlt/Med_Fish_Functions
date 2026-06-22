@@ -82,3 +82,13 @@ percentile_class <- function(x) {
 
 # Not in
 `%notin%` = Negate(`%in%`)
+
+
+# label Extended Figure
+make_label <- function(id, eco) {
+  map2_chr(id, eco, function(i, e) {
+    eco_wrapped <- str_wrap(e, width = 25)
+    n_lines <- str_count(eco_wrapped, "\n") + 1
+    eco_html <- gsub("\n", "<br>", eco_wrapped)
+    if (n_lines == 1) { paste0("<b>", i, ".</b> ", eco_html, "<br>&nbsp;") } else {
+      paste0("<b>", i, ".</b> ", eco_html)}})}
