@@ -10,7 +10,7 @@ source("Scripts/00_functions_script.R")
 source("Scripts/A_FLUXGLOB_Context.R")
 
 ## Clean Species name
-Species_list       <- FLUXGLOB |> distinct(Species) |> left_join(rfishbase::load_taxa())
+Species_list       <- FLUXGLOB |> sf::st_drop_geometry() |> distinct(Species) |> left_join(rfishbase::load_taxa())
 Species_list_NA_FB <- Species_list |> dplyr::filter(is.na(SpecCode)) |> pull(Species)
 ### 1) Wrong denomination due to out-to-date names
 Species_list_cor   <- data.frame(Species_FLUXGLOB = Species_list_NA_FB, Species = validate_names(Species_list_NA_FB)) |>
@@ -29,16 +29,16 @@ subfamily_lookup   <- taxa |> distinct(Subfamily, Family, Order, Class)
 genus_lookup       <- taxa |> distinct(Genus, Subfamily, Family, Order, Class)
 remaining_order    <- Species_list_cor |> dplyr::filter(n_words == 1) |> dplyr::select(-c(Class)) |> 
   left_join(order_lookup, by = c("Species_FLUXGLOB" = "Order")) |> mutate(Species = NA_character_) |> 
-  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Order = Species_FLUXGLOB)
+  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Order = Species_FLUXGLOB, Species = Species_FLUXGLOB)
 remaining_family   <- Species_list_cor |> dplyr::filter(n_words == 1) |> dplyr::select(-c(Order, Class)) |> 
   left_join(family_lookup, by = c("Species_FLUXGLOB" = "Family")) |> mutate(Species = NA_character_) |> 
-  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Family = Species_FLUXGLOB)
+  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Family = Species_FLUXGLOB, Species = Species_FLUXGLOB)
 remaining_subfam   <- Species_list_cor |> dplyr::filter(n_words == 1) |> dplyr::select(-c(Order, Class, Family)) |> 
   left_join(subfamily_lookup, by = c("Species_FLUXGLOB" = "Subfamily")) |> mutate(Species = NA_character_) |> 
-  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Subfamily = Species_FLUXGLOB)
+  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Subfamily = Species_FLUXGLOB, Species = Species_FLUXGLOB)
 remaining_genus    <- Species_list_cor |> dplyr::filter(n_words == 1) |> dplyr::select(-c(Order, Class, Family, Subfamily)) |> 
   left_join(genus_lookup, by = c("Species_FLUXGLOB" = "Genus")) |> mutate(Species = NA_character_) |> 
-  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Genus = Species_FLUXGLOB)
+  dplyr::select(names(Species_list_cor)) |> drop_na(Class) |> mutate(Genus = Species_FLUXGLOB, Species = Species_FLUXGLOB)
 remaining = rbind(remaining_order, remaining_family, remaining_subfam, remaining_genus) 
 Species_list_nom   <- Species_list_cor |> drop_na(Class)
 Species_list_nom   <- rbind(Species_list_nom, remaining)
@@ -47,7 +47,7 @@ Species_list_gen   <- Species_list_cor |> dplyr::filter(Species_FLUXGLOB %in%
   Species_list_NA_FB[grepl("\\s+spp?\\.?$", Species_list_NA_FB)]) |>
   dplyr::select(Species_FLUXGLOB) |> mutate(Genus = sub("\\s+spp?\\.?$", "", Species_FLUXGLOB)) |> 
   left_join(genus_lookup, by = "Genus") |> mutate(Species = NA_character_, SpecCode = NA_character_, SuperClass = NA_character_,
-  n_words = 2) |> dplyr::select(names(Species_list_cor))
+  n_words = 2) |> dplyr::select(names(Species_list_cor)) |> mutate(Species = Species_FLUXGLOB)
 Species_list_cor   <- rbind(Species_list_nom, Species_list_gen) |> dplyr::select(-n_words)
 ### Non-identified species / Manual data wrangling
 Species_list_OSNI  <- data.frame(Species_FLUXGLOB = c("Symphodus doderleini ", "Allinectes ectenes", "Hyporthodus drummondhayi", 
@@ -67,10 +67,16 @@ Species_list_no_NA <- Species_list |> mutate(Species_FLUXGLOB = Species) |> dply
   drop_na(SpecCode)
 Species_list       <- rbind(Species_list_no_NA, Species_list_cor) |> arrange(Species_FLUXGLOB) 
 
+common_species     <- intersect(Species_list_no_NA$Species_FLUXGLOB, Species_list_cor$Species_FLUXGLOB)
+length(unique(Species_list$Species_FLUXGLOB)) # 2409
+length(Species_list_no_NA$Species_FLUXGLOB)   # 1903
+length(Species_list_cor$Species_FLUXGLOB)     #  507
+length(common_species)                        #    0
+
 ### Final Clean FLUXGLOB dataset
 FLUXGLOB_cor = FLUXGLOB |> dplyr::select(-c(SpecCode, Family, Genus)) |> 
   left_join(Species_list |> dplyr::filter(!(Species_FLUXGLOB == "Leptocephalus" & is.na(Subfamily) & Family == "Notacanthidae")), 
-            by = c("Species" = "Species_FLUXGLOB")) |> dplyr::select(-Species) |> rename(Species = Species.y)
+            by = c("Species" = "Species_FLUXGLOB")) |> rename(Species_FLUXGLOB = Species, Species = Species.y) 
 
 ##### Save NMDS Model
 save(FLUXGLOB_cor, file = "Outputs/FLUXGLOB/dat_proc/FLUXGLOB.RData")

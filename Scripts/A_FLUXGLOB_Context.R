@@ -1,10 +1,10 @@
 #### Setting up          ----
 rm(list = ls())
-library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('readxl') ; library("scales") 
-library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("ggforce")
-library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("purrr")
-library("rnaturalearth") ; library("rnaturalearthdata") ; library("hexbin") ; library("leaflet.extras") 
-library("RColorBrewer") ; library("MASS") ; library("sf") ; library("brms") ; library("stringr") ; library("ggtext")
+library("rfishbase") ; library("TMB") ; library("Rcpp") ; library("phylosem") ; library("tidyverse") ; library('readxl')
+library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("ggforce") ; library("scales") 
+library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("leaflet.extras") 
+library("rnaturalearth") ; library("rnaturalearthdata") ; library("hexbin") ; library("purrr") ; library("ggtext")
+library("RColorBrewer") ; library("MASS") ; library("sf") ; library("brms") ; library("stringr") 
 
 ## Functions
 source("Scripts/00_functions_script.R")

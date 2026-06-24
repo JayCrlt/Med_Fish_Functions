@@ -17,7 +17,31 @@ impute_trait_phylopars <- function(data, trait_col, phy) {
     mutate(
       !!paste0(trait_name, "_final") := ifelse(is.na(.data[[trait_col]]), Estimated, .data[[trait_col]]),
       !!paste0(trait_name, "_type") := ifelse(is.na(.data[[trait_col]]), "imputed", "measured")) |>
-    select(-Estimated, -all_of(trait_col)) |> rename(!!trait_name := paste0(trait_name, "_final"))
+    dplyr::select(-Estimated, -all_of(trait_col)) |> rename(!!trait_name := paste0(trait_name, "_final"))
+  return(result)}
+
+
+# Imputational function FLUXGLOB
+impute_trait_phylopars_FG <- function(data, trait_col, phy) {
+  data_phy <- data |> dplyr::mutate(Species_phy = gsub(" ", "_", Species), 
+                                     Trait_orig = .data[[trait_col]]) |> dplyr::ungroup()
+  trait_data <- data_phy |> dplyr::filter(!is.na(Trait_orig)) |>
+    dplyr::transmute(Species = Species_phy, Trait = as.numeric(Trait_orig)) |>
+    dplyr::distinct(Species, .keep_all = TRUE)
+  matched_species <- intersect(trait_data$Species, phy$tip.label)
+  trait_data_clean <- trait_data |> dplyr::filter(Species %in% matched_species) |>
+    dplyr::transmute(species = Species, Trait = Trait) |> as.data.frame()
+  if (nrow(trait_data_clean) < 2) {stop(paste0("Not enough data for trait: ", trait_col))}
+  fit <- Rphylopars::phylopars(trait_data = trait_data_clean, tree = phy)
+  imputed_matrix <- fit$anc_recon[phy$tip.label, , drop = FALSE]
+  estimates <- tibble::tibble(Species_phy = rownames(imputed_matrix), Estimated = imputed_matrix[, "Trait"])
+  trait_name <- gsub("[^[:alnum:]]", "", trait_col)
+  result <- data_phy |>  dplyr::left_join(estimates, by = "Species_phy") |>
+    dplyr::mutate(!!trait_col := dplyr::coalesce(Trait_orig, Estimated),
+                  !!paste0(trait_name, "_type") := dplyr::case_when(
+                    !is.na(Trait_orig) ~ "measured",
+                    is.na(Trait_orig) & !is.na(Estimated) ~ "phylogenetic", TRUE ~ "missing")) |>
+    dplyr::select(-Species_phy, -Estimated, -Trait_orig)
   return(result)}
 
 
@@ -32,13 +56,23 @@ sample_once <- function(df, n_sample) {
 # Function to fill NAs hierarchically for one trait
 fill_trait_hierarchy <- function(df, trait) {
   trait_sym <- sym(trait)
-  df <- df %>%
-    group_by(Genus) %>%
-    mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) %>%
-    ungroup() %>% group_by(Family) %>%
-    mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) %>%
-    ungroup() %>% mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE), !!trait_sym))
+  df <- df |>
+    group_by(Genus) |>
+    mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) |>
+    ungroup() |> group_by(Family) |>
+    mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE),!!trait_sym)) |>
+    ungroup() |> mutate(!!trait_sym := ifelse(is.na(!!trait_sym), mean(!!trait_sym, na.rm = TRUE), !!trait_sym))
   return(df)}
+
+
+# Function to fill NAs hierarchically for one trait FLUXGLOB
+fill_trait_hierarchy_FG <- function(df, trait) {
+  fill_level <- function(data, level) {
+  data |> group_by(across(all_of(level))) |> mutate("{trait}" := ifelse(is.na(.data[[trait]]) & 
+                                                              !is.nan(mean(.data[[trait]], na.rm = TRUE)),
+          mean(.data[[trait]], na.rm = T), .data[[trait]])) |> ungroup()}
+  df |> fill_level("Genus") |> fill_level("Subfamily") |> fill_level("Family") |> 
+    mutate( "{trait}" := ifelse(is.na(.data[[trait]]), mean(.data[[trait]], na.rm = TRUE), .data[[trait]]))}
 
 
 # Ranking 1% functions
