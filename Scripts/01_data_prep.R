@@ -482,6 +482,13 @@ mutate(Species = case_when(
 ## Data
 save(All_Med, file = "Outputs/dat_proc/All_Med.RData")
 
+## Models
+save(model_C, file = "Outputs/dat_proc/model_C.RData")
+save(model_N, file = "Outputs/dat_proc/model_N.RData")
+save(model_P, file = "Outputs/dat_proc/model_P.RData")
+save(SMR_Weight_relationship, file = "Outputs/dat_proc/SMR_Weight_relationship.RData")
+save(MMR_Weight_relationship, file = "Outputs/dat_proc/MMR_Weight_relationship.RData")
+
 ## Figures
 ggsave(Figure_S1, filename = "Figure_S1.png", path = "Outputs/", device = "png", width = 10, height = 3.5, dpi = 300) 
 ggsave(Figure_S2, filename = "Figure_S2.png", path = "Outputs/", device = "png", width = 10, height = 5.0, dpi = 300) 
