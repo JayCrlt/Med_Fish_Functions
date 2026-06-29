@@ -3,7 +3,7 @@ library("rfishbase") ; library("phylosem") ; library("tidyverse") ; library('rea
 library("fishtree") ; library("geiger") ; library("ape") ; library("Rphylopars") ; library("ggforce") ; library("ggtext")
 library("ggridges") ; library("patchwork") ; library("fishflux") ; library("leaflet") ; library("purrr") ; library("sf")
 library("rnaturalearth") ; library("rnaturalearthdata") ; library("hexbin") ; library("leaflet.extras") ; library("brms")
-library("RColorBrewer") ; library("MASS") ; library("stringr")
+library("RColorBrewer") ; library("MASS") ; library("stringr") ; library("terra") ; library("reticulate")
 
 ## Functions
 source("Scripts/00_functions_script.R")
@@ -151,5 +151,4 @@ tab_Glob <- Species_list |> mutate(SpecCode = as.integer(SpecCode)) |>
   dplyr::select(-c("Class", "SuperClass")) |> drop_na(Species) # Remove Selachi and Perciformes without info from df
 
 #### Export the data  ----
-## Data
 save(tab_Glob, file = "Outputs/FLUXGLOB/dat_proc/All_Species_FLUXGLOB.RData")
