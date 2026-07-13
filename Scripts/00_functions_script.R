@@ -103,6 +103,17 @@ impute_temp <- function(hex_id, date, month) {
     return(candidates$TEMP[which.min(candidates$diff)])}}; return(NA) }
 
 
+# Temperature FLUXGLOB
+impute_temp_FG <- function(month, year, xy) {
+  cand <- temp_available[temp_available$Month == month, ]
+  if (nrow(cand) == 0) cand <- temp_available
+  cand_coords <- cbind(as.numeric(cand$X), as.numeric(cand$Y))
+  nn <- FNN::get.knnx(cand_coords, matrix(xy, nrow = 1), k = min(20, nrow(cand)))
+  neigh <- cand[nn$nn.index[1, ], ]
+  neigh$year_diff <- abs(neigh$Year - year)
+  neigh |> arrange(year_diff) |> slice(1) |> pull(SBTemp)}
+
+
 # Percentile
 percentile_class <- function(x) {
   q <- quantile(x, probs = c(0.01, 0.99, 0.05, 0.95), na.rm = TRUE)
@@ -116,6 +127,10 @@ percentile_class <- function(x) {
 
 # Not in
 `%notin%` = Negate(`%in%`)
+
+
+# Clean numeric
+clean_numeric <- function(x) as.numeric(gsub(",", ".", x))
 
 
 # label Extended Figure

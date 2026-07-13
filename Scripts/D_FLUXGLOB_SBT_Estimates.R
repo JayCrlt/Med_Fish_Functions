@@ -34,8 +34,9 @@ hauls_vect    <- vect(hauls)
 hauls$Month   <- as.integer(hauls$Month)
 hauls$botTemp <- NA_real_
 for (m in 1:12) {idx <- which(hauls$Month == m)
-  if (length(idx) > 0) { hauls$botTemp[idx] <- terra::extract(bt_clim[[m]], hauls_vect[idx])[, 2]}}
-FLUXGLOB_cor  <- FLUXGLOB_cor |> left_join(st_drop_geometry(hauls[, c("Haul_ID", "botTemp")]), by = "Haul_ID")
+  if (length(idx) > 0) { hauls$botTemp[idx] <- terra::extract(bt_clim[[m]], hauls_vect[idx], search_radius = 10000)[, 2]}}
+FLUXGLOB_cor  <- FLUXGLOB_cor |> left_join(st_drop_geometry(hauls[, c("Haul_ID", "botTemp")]), by = "Haul_ID") 
+FLUXGLOB_cor  <- FLUXGLOB_cor |> drop_na(botTemp)
 
 ## Visualization
 # Convert climatology raster to points

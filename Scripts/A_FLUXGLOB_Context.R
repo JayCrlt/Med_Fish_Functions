@@ -29,7 +29,6 @@ load("Outputs/FLUXGLOB/dat_proc/NMDS_Fish_Assemblages.RData")
 ###############
 
 # Merging the three datasets
-clean_numeric      <- function(x) as.numeric(gsub(",", ".", x))
 data_Atl           <- data |> dplyr::select(haul_id, longitude, latitude, year) |> distinct()
 data_Med           <- Medits_total |> dplyr::select(id, MEAN_LONGITUDE_DEC, MEAN_LATITUDE_DEC, YEAR) |> 
                       mutate(MEAN_LONGITUDE_DEC = clean_numeric(MEAN_LONGITUDE_DEC), 
@@ -260,8 +259,6 @@ site_scores_1c = site_scores |>
   mutate(ECOREGION = case_match(ECOREGION, "Aleutian Islands 2" ~ "Aleutian Islands", .default = ECOREGION)) |> 
   mutate(ER_Year = paste(ECOREGION, "_", Year, sep = "")) |> 
   dplyr::filter(ER_Year %in% Fig1c_sites$ER_Year) |> dplyr::select(-ER_Year)
-
-plot(site_scores_1c$NMDS1, site_scores_1c$NMDS2)
 
 Figure_1c = ggplot(site_scores_1c, aes(NMDS1, NMDS2)) +
   geom_polygon(data = isoline_0.99, aes(x, y, group = group), fill = NA, color = "black", linewidth = 0.75) +

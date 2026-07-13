@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+Data/*.nc
 
 # The data is confidential upon publication release
 Data/Medits_TableA.csv
@@ -17,4 +18,5 @@ Data/Datos Atlántico/
 
 # The submission folder and the graphical abstracts will be released upon publication
 Submission/
-Outputs/Graphical_Abstract/
+Outputs/Graphical_Abstract/Data/*.nc
+Outputs/

@@ -207,8 +207,8 @@ mdw_FishBase$Species <- gsub(" ", "_", mdw_FishBase$Species)
 phy <- fishtree_phylogeny(species = mdw_FishBase$Species)
 phy$tip.label <- gsub(" ", "_", phy$tip.label)
 mdw_FishBase_imputed <- mdw_FishBase |> impute_trait_phylopars(trait_col = "mdw", phy = phy) |> 
-  group_by(Species) |> summarise(Genus = first(Genus[!is.na(Genus) & Genus != ""]),
-                                 Family = first(Family[!is.na(Family) & Family != ""]), 
+  group_by(Species) |> summarise(Genus = dplyr::first(Genus[!is.na(Genus) & Genus != ""]),
+                                 Family = dplyr::first(Family[!is.na(Family) & Family != ""]), 
                                  mdw = first(mdw), mdw_type = first(mdw_type)) |> 
   mutate(Species = gsub("_", " ", Species)) |> ungroup() |> 
   dplyr::select(Species, mdw)

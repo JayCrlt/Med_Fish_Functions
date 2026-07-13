@@ -15,9 +15,11 @@ load("Outputs/dat_proc/model_C.RData")
 load("Outputs/dat_proc/model_N.RData")
 load("Outputs/dat_proc/model_P.RData")
 load("Outputs/FLUXGLOB/dat_proc/FLUXGLOB.RData")
+load("Outputs/dat_proc/mdw_FishBase_imputed.RData")
 load("Outputs/dat_proc/SMR_Weight_relationship.RData")
 load("Outputs/dat_proc/MMR_Weight_relationship.RData")
 load("Outputs/FLUXGLOB/dat_proc/FLUXGLOB_Species_list.RData")
+mdw_FishBase <- readxl::read_excel("Data/mass_conversion_FishBase.xlsx") 
 
 ## Nutrients, growth database and Caudal fin database
 # Nutrients
@@ -111,28 +113,31 @@ tab_Glob <- Species_list |> mutate(SpecCode = as.integer(SpecCode)) |>
   rename(h = FoodTroph) |> 
   
   ###### 4. Add constantes           ----
-  mutate(ac = 0.8, an = 0.8, ap = 0.7, F0Nz = 3.7e-03, F0Pz = 3.7e-04) |> 
+  mutate(ac = 0.8, an = 0.8, ap = 0.7, F0Nz = 3.7e-03, F0Pz = 3.7e-04, Species = gsub("_", " ", Species)) |> 
   relocate(Dataset, .after = F0Pz) |> 
-  left_join(mdw_FishBase_imputed |> mutate(Species = gsub(" ", "_", Species))) |> 
-  fill_trait_hierarchy_FG("mdw") |> 
+  left_join(mdw_FishBase_imputed |> 
+    left_join(rfishbase::load_taxa(), by = c("Species")) |> dplyr::select(-c("Class", "SuperClass", "SpecCode"))) |> 
+  fill_trait_hierarchy_FG("mdw") |> mutate(Species = gsub(" ", "_", Species)) |>
   relocate(Dataset, .after = mdw) |> 
   
   ###### 5. Add growth parameters    ----
-  mutate(lwa = NA, lwb = NA, linf = NA, K = NA, t0 = NA) |> 
-  full_join(lw_growth |> dplyr::select(Species, lwa, lwb,linf, K, t0) |> 
+
+  mutate(lwa = NA, lwb = NA, linf = NA, K = NA, t0 = NA, Species = gsub("_", " ", Species)) |> 
+  full_join(lw_growth |> left_join(rfishbase::load_taxa(), by = c("Species", "Genus", "Subfamily", "Family", "Order")) |> 
+              dplyr::select(Species, Genus, Subfamily, Family, Order, lwa, lwb, linf, K, t0) |> 
               mutate(Dataset = "FishBase") |> 
               relocate(Dataset, .after = t0)) |> 
-  relocate(Dataset, .after = t0) |> group_by(Species) |> 
+  relocate(Dataset, .after = t0) |> mutate(Species = gsub(" ", "_", Species)) |> group_by(Species) |> 
   fill_trait_hierarchy_FG("lwa") |> fill_trait_hierarchy_FG("lwb") |> fill_trait_hierarchy_FG("linf") |> 
   fill_trait_hierarchy_FG("K") |> fill_trait_hierarchy_FG("t0") |> ungroup() |> 
   
   ###### 6. Add Caudal fin           ----
-  mutate(r = NA) |> 
-  full_join(Caudal_fin_FB |> dplyr::select(Species, AspectRatio) |> 
+  mutate(r = NA, Species = gsub("_", " ", Species)) |> 
+  full_join(Caudal_fin_FB |> dplyr::select(Species, Genus, Subfamily, Family, Order, AspectRatio) |> 
               rename(r = AspectRatio) |> 
               mutate(Dataset = "FishBase") |> 
               relocate(Dataset, .after = r)) |> 
-  relocate(Dataset, .after = r) |> group_by(Species) |> 
+  relocate(Dataset, .after = r) |> mutate(Species = gsub(" ", "_", Species)) |> group_by(Species) |> 
   fill_trait_hierarchy_FG("r") |> ungroup() |> 
   
   ###### 7.  Add Metabolism data     ----
