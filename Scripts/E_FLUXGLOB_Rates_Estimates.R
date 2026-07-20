@@ -168,3 +168,6 @@ for(id in ids){
   save(FLUXGLOB_final, file = paste0("Outputs/FLUXGLOB/dat_proc/FLUXGLOB_checkpoint_ID", id, ".RData"))
   rm(dat)
   gc()}
+
+#### Export the data  ----
+save(FLUXGLOB_final, file = "Outputs/FLUXGLOB/dat_proc/FLUXGLOB_with_fluxes.RData")

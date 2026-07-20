@@ -19,4 +19,5 @@ Data/Datos Atlántico/
 # The submission folder and the graphical abstracts will be released upon publication
 Submission/
 Outputs/Graphical_Abstract/Data/*.nc
+Outputs/FLUXGLOB/dat_proc/FLUXGLOB_Checkpoint
 Outputs/
